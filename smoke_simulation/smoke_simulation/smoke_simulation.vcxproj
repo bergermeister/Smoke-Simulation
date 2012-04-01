@@ -86,13 +86,21 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="argparser.h" />
+    <ClInclude Include="array.h" />
+    <ClInclude Include="array2d.h" />
     <ClInclude Include="boundingbox.h" />
     <ClInclude Include="camera.h" />
+    <ClInclude Include="cell.h" />
     <ClInclude Include="fluid.h" />
     <ClInclude Include="glCanvas.h" />
     <ClInclude Include="marching_cubes.h" />
     <ClInclude Include="matrix.h" />
     <ClInclude Include="MersenneTwister.h" />
+    <ClInclude Include="numtraits.h" />
+    <ClInclude Include="octree.h" />
+    <ClInclude Include="point3d.h" />
+    <ClInclude Include="shareddata.h" />
+    <ClInclude Include="tinyvector.h" />
     <ClInclude Include="utils.h" />
     <ClInclude Include="vbo_structs.h" />
     <ClInclude Include="vectors.h" />

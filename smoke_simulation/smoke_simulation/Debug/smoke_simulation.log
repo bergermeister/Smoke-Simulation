@@ -1,0 +1,25 @@
+﻿Build started 4/1/2012 5:36:47 PM.
+     1>Project "C:\Users\ed\smoke_simulation\smoke_simulation\smoke_simulation\smoke_simulation.vcxproj" on node 2 (build target(s)).
+     1>PrepareForBuild:
+         Creating directory "C:\Users\ed\smoke_simulation\smoke_simulation\Debug\".
+       InitializeBuildStatus:
+         Creating "Debug\smoke_simulation.unsuccessfulbuild" because "AlwaysCreate" was specified.
+       ClCompile:
+         c:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc100.pdb" /Gd /TP /analyze- /errorReport:prompt boundingbox.cpp camera.cpp fluid.cpp fluid_render.cpp glCanvas.cpp main.cpp marching_cubes.cpp matrix.cpp
+         matrix.cpp
+         marching_cubes.cpp
+         main.cpp
+         glCanvas.cpp
+     1>c:\users\ed\smoke_simulation\smoke_simulation\smoke_simulation\glcanvas.cpp(4): fatal error C1083: Cannot open include file: 'cloth.h': No such file or directory
+         fluid_render.cpp
+         fluid.cpp
+     1>c:\users\ed\smoke_simulation\smoke_simulation\smoke_simulation\fluid.cpp(569): warning C4101: 'w' : unreferenced local variable
+     1>c:\users\ed\smoke_simulation\smoke_simulation\smoke_simulation\fluid.cpp(570): warning C4101: 'C' : unreferenced local variable
+         camera.cpp
+         boundingbox.cpp
+         Generating Code...
+     1>Done Building Project "C:\Users\ed\smoke_simulation\smoke_simulation\smoke_simulation\smoke_simulation.vcxproj" (build target(s)) -- FAILED.
+
+Build FAILED.
+
+Time Elapsed 00:00:08.98
