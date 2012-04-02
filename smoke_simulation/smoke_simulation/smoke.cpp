@@ -5,6 +5,13 @@
 #include <algorithm>
 
 #include "smoke.h"
+#include "glCanvas.h"
+
+#include <fstream>
+#include <iomanip>
+#include <algorithm>
+
+#include "smoke.h"
 #include "argparser.h"
 #include "boundingbox.h"
 #include "vectors.h"
@@ -200,7 +207,7 @@ void Smoke::Animate() {
   UpdatePressures();
   CopyVelocities();
 
-  // advanced the particles through the fluid
+  // advanced the particles through the Smoke
   MoveParticles();
   ReassignParticles();
   SetEmptySurfaceFull();
@@ -378,7 +385,6 @@ void Smoke::CopyVelocities() {
 
 double Smoke::AdjustForIncompressibility() {
 
-
   // *********************************************************************  
   // ASSIGNMENT:
   //
@@ -389,47 +395,119 @@ double Smoke::AdjustForIncompressibility() {
   // Also play around with compressible flow!
   //
   // *********************************************************************    
-	double max_div = 0;
-	
-	for(int i = 0; i <= nx; i++){
-		for(int j = 0; j <= ny; j++){
-			for(int k = 0; k <= nz; k++){
-				double div = 0;
-				if(i >= 0 && i < nx && j >= 0 && j < ny && k >= 0 && k < nz){
-					int count = 0;
-					div = -((1/dx)*(get_new_u_plus(i,j,k) - get_new_u_plus(i-1, j, k)) +
-							(1/dy)*(get_new_v_plus(i,j,k) - get_new_v_plus(i,j-1,k)) +
-							(1/dz)*(get_new_w_plus(i,j,k) - get_new_w_plus(i,j,k-1)));
+	double div = 0;
+	double maxDiv = 0;
 
-					if(i > 0)
-						count++;
-					if(j > 0)
-						count++;
-					if(k > 0)
-						count++;
-					if(i<nx-1)
-						count++;
-					if(j<ny-1)
-						count++;
-					if(k<nz-1)
-						count++;
+	for (int i = 0; i < nx; i++)  
+	{
+		for (int j = 0; j < ny; j++)
+		{
+			for (int k = 0; k < nz; k++)
+			{
+				/*if (getCell(i, j, k)->getStatus() == CELL_SURFACE)
+				{
+					if (getCell(i+1, j, k)->getStatus() == CELL_EMPTY &&
+						getCell(i-1, j, k)->getStatus() != CELL_EMPTY)
+					{
+						adjust_new_u_plus(i+1, j, k, getCell(i-1, j, k)->get_new_u_plus());
+					}
+					if (getCell(i-1, j, k)->getStatus() == CELL_EMPTY &&
+						getCell(i+1, j, k)->getStatus() != CELL_EMPTY )
+					{
+						adjust_new_u_plus(i-1, j, k, getCell(i, j, k)->get_new_u_plus());
+					}
+					if (getCell(i, j+1, k)->getStatus() == CELL_EMPTY &&
+						getCell(i, j-1, k)->getStatus() != CELL_EMPTY)
+					{
+						adjust_new_v_plus(i, j+1, k, getCell(i, j-1, k)->get_new_v_plus());
+					}
+					if (getCell(i, j-1, k)->getStatus() == CELL_EMPTY &&
+						getCell(i, j+1, k)->getStatus() != CELL_EMPTY)
+					{
+						adjust_new_v_plus(i, j-1, k, getCell(i, j, k)->get_new_v_plus());
+					}
+
+					int freeCellCount = 0;
+					if (getCell(i+1, j, k)->getStatus() == CELL_EMPTY)
+						freeCellCount++;
+					if (getCell(i, j+1, k)->getStatus() == CELL_EMPTY)
+						freeCellCount++;
+					if (getCell(i-1, j, k)->getStatus() == CELL_EMPTY)
+						freeCellCount++;
+					if (getCell(i, j-1, k)->getStatus() == CELL_EMPTY)
+						freeCellCount++;
+
+					div = - (  (get_new_u_plus(i,j,k) - get_new_u_plus(i-1,j,k)) +
+								 (get_new_v_plus(i,j,k) - get_new_v_plus(i,j-1,k)) +
+							    (get_new_w_plus(i,j,k) - get_new_w_plus(i,j,k-1)));
+
+					//if (div > 0)
+					//{
+					//	// Push this excess volume through the free faces
+					//	if (getCell(i+1, j, k)->getStatus() == CELL_EMPTY)
+					//		adjust_new_u_plus(i, j, k, div/freeCellCount);
+					//	if (getCell(i, j+1, k)->getStatus() == CELL_EMPTY)
+					//		adjust_new_v_plus(i, j, k, div/freeCellCount);
+					//	if (getCell(i-1, j, k)->getStatus() == CELL_EMPTY)
+					//		adjust_new_u_plus(i-1, j, k, -div/freeCellCount);
+					//	if (getCell(i, j-1, k)->getStatus() == CELL_EMPTY)
+					//		adjust_new_v_plus(i, j-1, k, -div/freeCellCount);
+					//}
+					//else if (div < 0)
+					//{
+						//?
+					//}
+				}*/
+
+				if (getCell(i, j, k)->getStatus() == CELL_FULL || getCell(i, j, k)->getStatus() == CELL_SURFACE)
+				{
+					//flow from cell                flow from neighbor cells (example 12-4 = 8)
+					div = (get_new_u_plus(i,j,k)  - get_new_u_plus(i-1,j,k));
+					div += (get_new_v_plus(i,j,k) - get_new_v_plus(i,j-1,k));
+					div +=(get_new_w_plus(i,j,k)  - get_new_w_plus(i,j,k-1));
+				    div =-div; //think bc adj is in flow, so flip >>in paper they have negative in equation		
+  
+					if(abs(div) >abs(maxDiv))
+						maxDiv = div;
 					
-					if(i < nx-1 && getCell(i-1,j,k)->getStatus() != CELL_EMPTY) adjust_new_u_plus(i,j,k, div/count);
-					if(j < ny-1 && getCell(i,j-1,k)->getStatus() != CELL_EMPTY) adjust_new_v_plus(i,j,k, div/count);
-					if(k < nz-1 && getCell(i,j,k-1)->getStatus() != CELL_EMPTY) adjust_new_w_plus(i,j,k, div/count);
-					if(i > 0 && getCell(i+1,j,k)->getStatus() != CELL_EMPTY) adjust_new_u_plus(i-1,j,k, -div/count);
-					if(j > 0 && getCell(i,j+1,k)->getStatus() != CELL_EMPTY) adjust_new_v_plus(i,j-1,k, -div/count);
-					if(k > 0 && getCell(i,j,k+1)->getStatus() != CELL_EMPTY) adjust_new_w_plus(i,j,k-1, -div/count);
+					/* Checking if we boarding all adjecent faces */
+					int adjFaces = 6; //(each side cube)
+					if (i == 0) //first cell
+						adjFaces--;
+					if (i == nx-1)  //last cell
+						adjFaces--;
+					if (j == 0) //first cell
+						adjFaces--;
+					if (j == ny-1)  // cell
+						adjFaces--;
+					if (k == 0)  //first cell
+						adjFaces--;
+					if (k == nz-1)  //last cell
+						adjFaces--;
+					
+					//adjust velocity for face adj of in/out flow
+					if (i < nx-1)
+						adjust_new_u_plus(i, j, k, div/adjFaces);
+					if (j < ny-1)
+						adjust_new_v_plus(i, j, k, div/adjFaces);
+					if (k < nz-1)
+						adjust_new_v_plus(i, j, k, div/adjFaces);
+					if (i-1 >= 0)
+						adjust_new_u_plus(i-1, j, k, -div/adjFaces);
+					if (j-1 >= 0)
+						adjust_new_v_plus(i, j-1, k, -div/adjFaces);
+					if (k-1 >= 0)
+						adjust_new_w_plus(i, j, k-1, -div/adjFaces);
+				
 				}
-				
-				if(max_div < abs(div)) max_div = abs(div);
-				
 			}
+
 		}
+
 	}
-	//std::cout << max_div << std::endl;
+
   // return the divergence (will be repeated while divergence > threshold)
-  return max_div;
+	return fabs(maxDiv);
 }
 
 // ==============================================================
@@ -438,34 +516,28 @@ void Smoke::UpdatePressures() {
   for (int i = -1; i <= nx; i++) {
     for (int j = -1; j <= ny; j++) {
       for (int k = -1; k <= nz; k++) {
-		Cell *c = getCell(i,j,k);
-		if (i >= 0 && i < nx && j >= 0 && j < ny && k >= 0 && k < nz) {
-		  // compute divergence and increment/decrement pressure
-		  double pressure = c->getPressure();
-		  double divergence = 
-			- ( (1/dx) * (get_new_u_plus(i,j,k) - get_new_u_plus(i-1,j,k)) +
-			(1/dy) * (get_new_v_plus(i,j,k) - get_new_v_plus(i,j-1,k)) +
-			(1/dz) * (get_new_w_plus(i,j,k) - get_new_w_plus(i,j,k-1)) );
-		  double dt = args->timestep;
-		  double beta = BETA_0/((2*dt) * (1/square(dx) + 1/square(dy) + 1/square(dz)));
-		  double dp = beta*divergence;
-		  /*
-		  std::cout << "dp::" << dp << '\t' << "divergence::" << divergence << std::endl;
-		  std::cout<< "Pressure::Cell(" << i << "," << j << "," << k << ") u = " << get_new_u_plus(i,j,k) << std::endl;
-		  std::cout<< "Pressure::Cell(" << i << "," << j << "," << k << ") v = " << get_new_v_plus(i,j,k) << std::endl;
-		  std::cout<< "Pressure::Cell(" << i << "," << j << "," << k << ") w = " << get_new_w_plus(i,j,k) << std::endl;
-		  */
-		  c->setPressure(pressure + dp);
-		} else {
-		  // zero out boundary cells (just in case)
-		  c->setPressure(0);
-		}
+	Cell *c = getCell(i,j,k);
+	if (i >= 0 && i < nx && j >= 0 && j < ny && k >= 0 && k < nz) {
+	  // compute divergence and increment/decrement pressure
+	  double pressure = c->getPressure();
+	  double divergence = 
+	    - ( (1/dx) * (get_new_u_plus(i,j,k) - get_new_u_plus(i-1,j,k)) +
+		(1/dy) * (get_new_v_plus(i,j,k) - get_new_v_plus(i,j-1,k)) +
+		(1/dz) * (get_new_w_plus(i,j,k) - get_new_w_plus(i,j,k-1)) );
+	  double dt = args->timestep;
+	  double beta = BETA_0/((2*dt) * (1/square(dx) + 1/square(dy) + 1/square(dz)));
+	  double dp = beta*divergence;
+	  c->setPressure(pressure + dp);
+	} else {
+	  // zero out boundary cells (just in case)
+	  c->setPressure(0);
+	}
 
-		// zero out empty cells (From Foster 2001 paper)
-		if (c->getStatus() == CELL_EMPTY) {
-		  c->setPressure(0);
-		}
-		// ========================================
+	// zero out empty cells (From Foster 2001 paper)
+	if (c->getStatus() == CELL_EMPTY) {
+	  c->setPressure(0);
+	}
+	// ========================================
 
       }
     }
@@ -565,102 +637,124 @@ Vec3f Smoke::getInterpolatedVelocity(const Vec3f &pos) const {
   //
   // I've intentionally reverted to the "dumb" velocity interpolation.
   // Do it right, as described in the papers.
-  //
-	double u[8], v[8], w[8];
-	double A[8], B[8], C[8];
+  // ********************************************************************
+
+	double u[8],v[8],w[8];
+	double au[8],av[8],aw[8];
+	Vec3f average;
+	double xWeight, yWeight, zWeight;     
+
+	// The percentage position of the particle relative to the origin of the cell it is within (adentro)
+	double xDis = (pos.x()/dx) - floor(pos.x()/dx);
+	double yDis = (pos.y()/dy) - floor(pos.y()/dy);
+	double zDis = (pos.z()/dz) - floor(pos.z()/dz);
 	
 	int i = int(floor(pos.x()/dx)); if (i < 0) i = 0; if (i >= nx) i = nx-1;
-	int j = int(floor(pos.y()/dy)); if (j < 0) j = 0; if (j >= ny) j = ny-1;
+	int j = int(floor(pos.y()/dx)); if (j < 0) j = 0; if (j >= ny) j = ny-1;
 	int k = int(floor(pos.z()/dz)); if (k < 0) k = 0; if (k >= nz) k = nz-1;
-	int i2, j2, k2;
-
-	if(pos.x() < i + 0.5*dx) i2 = i - 1;
-	else i2 = i + 1;
-	if(pos.y() < j + 0.5*dy) j2 = j - 1;
-	else j2 = j + 1;
-	if(pos.z() < k + 0.5*dz) k2 = k - 1;
-	else k2 = k + 1;
-
-	u[0] = get_u_plus(i, j2, k);
-	u[1] = get_u_plus(i-1, j2, k);
-	u[2] = get_u_plus(i-1, j, k);
-	u[3] = get_u_plus(i, j, k);
-	/*
-	u[4] = get_u_plus(i, j2, k2);
-	u[5] = get_u_plus(i-dx, j2, k2);
-	u[6] = get_u_plus(i-dx, j, k2);
-	u[7] = get_u_plus(i, j, k2);
-	*/
-	A[0] = (dx - (i + dx - pos.x())) * (dy - abs(j2 + 0.5*dy - pos.y()));
-	A[1] = (dx - (pos.x() - i)) * (dy - abs(j2 + 0.5*dy - pos.y()));
-	A[2] = (dx - (pos.x() - i)) * (dy - abs(j + 0.5*dy - pos.y()));
-	A[3] = (dx - (i + dx - pos.x())) * (dy - abs(j + 0.5*dy - pos.y()));
 	
-	//std::cout<<A[0] << '+' << A[1] << '+' << A[2] << '+' << A[3] << '=' << A[0] + A[1] + A[2] + A[3] << std::endl;
-	double x = (A[0]*u[0] + A[1]*u[1] + A[2]*u[2] + A[3]*u[3]);
+	// Calculate the U velocity (x direction)
 
-	v[0] = get_v_plus(i2, j, k);
-	v[1] = get_v_plus(i, j, k);
-	v[2] = get_v_plus(i, j-1, k);
-	v[3] = get_v_plus(i2, j-1, k);
-	/*
-	v[4] = get_v_plus(i2, j, k2);
-	v[5] = get_v_plus(i, j, k2);
-	v[6] = get_v_plus(i, j-dy, k2);
-	v[7] = get_v_plus(i2, j-dy, k2);
-	*/
-	B[0] = (dx - abs(i2 + 0.5*dx - pos.x())) * (dy - (j + dy - pos.y()));
-	B[1] = (dx - abs(i + 0.5*dx - pos.x())) * (dy - (j + dy - pos.y()));
-	B[2] = (dx - abs(i + 0.5*dx - pos.x())) * (dy - (pos.y() - j));
-	B[3] = (dx - abs(i2 + 0.5*dx - pos.x())) * (dy - (pos.y() - j));
+	/* Finding cells we need to use for the velocity in X direction. 
+	    Evaluates to 0 when the particle is in the upper half of the 
+		cell and 1 when the particle is in the lower half of the cell. */	
+	i = int(floor(pos.x()/dx)) - 1;//if (i < 0) i = 0;
+	j = int(floor(pos.y()/dy) - (1 - floor(2 * yDis)));//if (j < 0) j = 0;
+	k = int(floor(pos.z()/dz) - (1 - floor(2 * zDis)));//if (k < 0) k = 0;
 	
-	double y = (B[0]*v[0] + B[1]*v[1] + B[2]*v[2] + B[3]*v[3]);
-
-	/*
-	if(pos.x() < i + 0.5*dx) i2 = i - dx;
-	else i2 = i + dx;
-	if(pos.y() < j + 0.5*dy) j2 = j - dy;
-	else j2 = j + dy;
-	if(pos.z() < k + 0.5*dz) k2 = k - dz;
-	else k2 = k + dz;
-
-	u[0] = get_u_plus(i, j2, k);
-	u[1] = get_u_plus(i-dx, j2, k);
-	u[2] = get_u_plus(i-dx, j, k);
-	u[3] = get_u_plus(i, j, k);
+	u[0] = get_u_plus(i,j,k);
+	u[1] = get_u_plus(i + 1,j,k);
+	u[2] = get_u_plus(i,j + 1,k);
+	u[3] = get_u_plus(i+1,j + 1,k); 
+	u[4] = get_u_plus(i,j,k+1);
+	u[5] = get_u_plus(i+1,j,k+1);
+	u[6] = get_u_plus(i,j+1,k+1);
+	u[7] = get_u_plus(i+1,j+1,k+1);
 	
-	//u[4] = get_u_plus(i, j2, k2);
-	//u[5] = get_u_plus(i-dx, j2, k2);
-	//u[6] = get_u_plus(i-dx, j, k2);
-	//u[7] = get_u_plus(i, j, k2);
+	xWeight = xDis;
+	yWeight = yDis + (0.5 - floor(2*yDis));
+	zWeight = zDis + (0.5 - floor(2*zDis));
 	
-	A[0] = (1 - (i + dx - pos.x())) * (1 - abs(j2 + 0.5*dy - pos.y()));
-	A[1] = (1 - (pos.x() - i)) * (1 - abs(j2 + 0.5*dy - pos.y()));
-	A[2] = (1 - (pos.x() - i)) * (1 - abs(j + 0.5*dy - pos.y()));
-	A[3] = (1 - (i + dx - pos.x())) * (1 - abs(j + 0.5*dy - pos.y()));
+	au[0] = (1 - xWeight)*(1 - yWeight)*(1 - zWeight);
+	au[1] =  xWeight*(1 - yWeight)*(1 - zWeight);
+	au[2] = (1 - xWeight)*yWeight*(1 - zWeight);
+	au[3] =  xWeight*yWeight*(1 - zWeight);
+	au[4] = (1 - xWeight)*(1 - yWeight)*zWeight;
+	au[5] = xWeight*(1 - yWeight)*zWeight ;
+	au[6] = (1- xWeight)*yWeight*zWeight;
+	au[7] = xWeight*yWeight*zWeight;
 
-	double x = A[0]*u[0] + A[1]*u[1] + A[2]*u[2] + A[3]*u[3];
+	average.setx(au[0]*u[0] + au[1]*u[1] + au[2]*u[2] + au[3]*u[3] + au[4]*u[4] + au[5]*u[5] + au[6]*u[6] + au[7]*u[7]);
 
-	v[0] = get_v_plus(i2, j, k);
-	v[1] = get_v_plus(i, j, k);
-	v[2] = get_v_plus(i, j-dy, k);
-	v[3] = get_v_plus(i2, j-dy, k);
+	// Calculate the V velocity (y direction)
+
+	 /* Finding cells we need to use for the velocity in Y direction. 
+	    Evaluates to 0 when the particle is in the upper half of the 
+		cell and dx when the particle is in the lower half of the cell. */	
+	i = int(floor(pos.x()/dx) - (1 - floor(2 * xDis)));//if (i < 0) i = 0;
+	j = int(floor(pos.y()/dy)) - 1;//if (j < 0) j = 0;
+	k = int(floor(pos.z()/dz) - (1 - floor(2 * zDis)));//if (k < 0) k = 0;
 	
-	//v[4] = get_v_plus(i2, j, k2);
-	//v[5] = get_v_plus(i, j, k2);
-	//v[6] = get_v_plus(i, j-dy, k2);
-	//v[7] = get_v_plus(i2, j-dy, k2);
+	xWeight = xDis + (0.5 - floor(2*xDis));
+	yWeight = yDis;
+	zWeight = zDis + (0.5 - floor(2*zDis));
+
+	v[0] = get_v_plus(i,j,k);
+	v[1] = get_v_plus(i + 1,j,k);
+	v[2] = get_v_plus(i,j + 1,k);
+	v[3] = get_v_plus(i+1,j + 1,k); 
+	v[4] = get_v_plus(i,j,k+1);
+	v[5] = get_v_plus(i+1,j,k+1);
+	v[6] = get_v_plus(i,j+1,k+1);
+	v[7] = get_v_plus(i+1,j+1,k+1);
+
+	av[0] = (1 - xWeight)*(1 - yWeight)*(1 - zWeight);
+	av[1] = xWeight*(1 - yWeight)*(1 - zWeight);
+	av[2] = (1 - xWeight)*yWeight*(1 - zWeight);
+	av[3] = xWeight*yWeight*(1 - zWeight) ;
+	av[4] = (1 - xWeight)*(1 - yWeight)*zWeight;
+	av[5] = xWeight*(1 - yWeight)*zWeight;
+	av[6] = (1 - xWeight)*yWeight*zWeight;
+	av[7] =  xWeight*yWeight*zWeight;
+
+	average.sety(av[0]*v[0] + av[1]*v[1] + av[2]*v[2] + av[3]*v[3] + av[4]*v[4] + av[5]*v[5] + av[6]*v[6] + av[7]*v[7]);
+
+	// Calculate the W velocity (z direction)
+
+	 /* Finding cells we need to use for the velocity in Z direction. 
+	    Evaluates to 0 when the particle is in the upper half of the 
+		cell and dx when the particle is in the lower half of the cell. */	
+	i = int(floor(pos.x()/dx) - (1 - floor(2 * xDis)));//if (i < 0) i = 0;
+	j = int(floor(pos.y()/dy) - (1 - floor(2 * yDis)));//if (j < 0) j = 0;
+	k = int(floor(pos.z()/dz)) - 1; //if (k < 0) k = 0;
+	xWeight = xDis + (0.5 - floor(2*xDis));
+	yWeight = yDis + (0.5 - floor(2*yDis));
+	zWeight = zDis;
 	
-	B[0] = (1 - abs(i2 + 0.5*dx - pos.x())) * (1 - (j + dy - pos.y()));
-	B[1] = (1 - abs(i + 0.5*dx - pos.x())) * (1 - (j + dy - pos.y()));
-	B[2] = (1 - abs(i + 0.5*dx - pos.x())) * (1 - (pos.y() - j));
-	B[3] = (1 - abs(i2 + 0.5*dx - pos.x())) * (1 - (pos.y() - j));
+	w[0] = get_w_plus(i,j,k);
+	w[1] = get_w_plus(i + 1,j,k);
+	w[2] = get_w_plus(i,j + 1,k);
+	w[3] = get_w_plus(i + 1,j + 1,k);
+	w[4] = get_w_plus(i,j,k + 1);
+	w[5] = get_w_plus(i + 1,j,k + 1);
+	w[6] = get_w_plus(i,j + 1,k + 1);
+	w[7] = get_w_plus(i + 1,j + 1,k + 1);
 
-	double y = B[0]*v[0] + B[1]*v[1] + B[2]*v[2] + B[3]*v[3];
-	*/
-  return Vec3f(x,y,k);
-	//return Vec3f(i,j,k);
-  //
-  // *********************************************************************  
+	aw[0] = (1 - xWeight)*(1 - yWeight)*(1 - zWeight);
+	aw[1] =  xWeight*(1 - yWeight)*(1 - zWeight);
+	aw[2] = (1 - xWeight)*yWeight*(1 - zWeight);
+	aw[3] = xWeight*yWeight*(1 - zWeight);
+	aw[4] = (1 - xWeight)*(1 - yWeight)*zWeight;
+	aw[5] = xWeight*(1 - yWeight)*zWeight;
+	aw[6] = (1 - xWeight)*yWeight*zWeight;
+	aw[7] = xWeight*yWeight*zWeight;
 
+	average.setz(aw[0]*w[0] + aw[1]*w[1] + aw[2]*w[2] + aw[3]*w[3] + aw[4]*w[4] + aw[5]*w[5] + aw[6]*w[6] + aw[7]*w[7]);
+
+
+	return average;
 }
+
+
+
+

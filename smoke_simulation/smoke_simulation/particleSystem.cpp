@@ -1,4 +1,4 @@
-#include "paricleSystem.h"
+#include "particleSystem.h"
 
 
 //-------------------------------------------------------------------------------
@@ -46,5 +46,5 @@ void particleSystem::addParticle(particle p )
 //Function: Return size vector particles
 int particleSystem::getNumParticles()
 {
-	particles.size();
+	return particles.size();
 }

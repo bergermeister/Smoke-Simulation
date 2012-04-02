@@ -6,16 +6,6 @@
 
 // ==============================================================================
 
-class FluidParticle {
-public:
-  // accessor
-  Vec3f getPosition() const { return position; }
-  // modifer
-  void setPosition(Vec3f p) { position = p; }
-private:
-  // representation
-  Vec3f position;
-};
 
 class SmokeParticle {
 public:

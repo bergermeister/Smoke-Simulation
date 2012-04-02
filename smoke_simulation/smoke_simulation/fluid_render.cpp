@@ -143,7 +143,7 @@ void Fluid::setupVBOs() {
 			   Vec3f(x+0.55*dx,y+dy,z+0.45*dz),
 			   Vec3f(x+0.45*dx,y+dy,z+0.45*dz),
 			   Vec3f(x+0.45*dx,y+dy,z+0.55*dz) };
-	  setupConeVBO(pts,Vec3f(0,1,0),fluid_face_velocity_vis);	  
+ setupConeVBO(pts,Vec3f(0,1,0),fluid_face_velocity_vis);	  
 	}
 	if (w < -10*dt) {
 	  Vec3f pts[5] = { Vec3f(x+0.5*dx,y+0.5*dy,z+dz+w),
@@ -189,7 +189,7 @@ void Fluid::setupVBOs() {
           } else {
             color = Vec3f(1,1-p,1-p);
           }
-	  setupCubeVBO(pts,color,fluid_pressure_vis);
+	  //setupCubeVBO(pts,color,fluid_pressure_vis);
       }
     }
   }
@@ -217,7 +217,7 @@ void Fluid::setupVBOs() {
 	} else {
 	  continue;
 	}
-	setupCubeVBO(pts,color,fluid_cell_type_vis);
+//	setupCubeVBO(pts,color,fluid_cell_type_vis);
       }
     }
   }

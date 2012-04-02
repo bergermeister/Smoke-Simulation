@@ -29,7 +29,6 @@
 
 class ArgParser;
 class Camera;
-class Fluid;
 class Smoke;
 
 // ====================================================================
@@ -54,7 +53,6 @@ private:
   // various static variables
   static ArgParser *args;
   static Camera *camera;
-  static Fluid *fluid;
   static Smoke *smoke;
   static BoundingBox bbox;
 

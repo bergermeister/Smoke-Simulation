@@ -15,6 +15,7 @@ void BoundingBox::setupVBOs() {
 
   HandleGLError("setup VBOs a ");
 
+
   VBOPos bb_verts[8];
   VBOIndexedEdge bb_edges[12];
   

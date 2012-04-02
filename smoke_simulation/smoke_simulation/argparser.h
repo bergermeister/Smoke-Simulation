@@ -20,13 +20,7 @@ public:
     DefaultValues();
 
     for (int i = 1; i < argc; i++) {
-      if (argv[i] == std::string("-cloth")) {
-        i++; assert (i < argc); 
-        cloth_file = argv[i];
-      } else if (argv[i] == std::string("-fluid")) {
-        i++; assert (i < argc); 
-        fluid_file = argv[i];
-	  }else if (argv[i] == std::string("-smoke")){
+	  if (argv[i] == std::string("-smoke")){
 		  i++; assert(i < argc);
 		  smoke_file = argv[i];
       } else if (argv[i] == std::string("-size")) {
@@ -81,7 +75,6 @@ public:
   // all public! (no accessors)
 
   std::string cloth_file;
-  std::string fluid_file;
   std::string smoke_file;
   int width;
   int height;
@@ -102,7 +95,7 @@ public:
   bool force;
   bool wireframe;  
 
-  // used by fluid
+  // used by Smoke
   int face_velocity;
   int dense_velocity;
   double isosurface;

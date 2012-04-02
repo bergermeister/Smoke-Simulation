@@ -111,7 +111,7 @@ private:
   // REPRESENTATION
   ArgParser *args;
 
-  // fluid parameters
+  // Smoke parameters
   int nx,ny,nz;     // number of grid cells in each dimension
   double dx,dy,dz;  // dimensions of each grid cell
   Cell *cells;      // NOTE: padded with extra cells on each side
