@@ -1,10 +1,12 @@
-﻿Build started 4/2/2012 3:24:10 PM.
+﻿Build started 4/2/2012 3:54:50 PM.
      1>Project "C:\Users\ed\smoke_simulation\smoke_simulation\smoke_simulation\smoke_simulation.vcxproj" on node 2 (build target(s)).
      1>InitializeBuildStatus:
-         Touching "Debug\smoke_simulation.unsuccessfulbuild".
+         Creating "Debug\smoke_simulation.unsuccessfulbuild" because "AlwaysCreate" was specified.
        ClCompile:
          c:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc100.pdb" /Gd /TP /analyze- /errorReport:prompt fluid.cpp fluid_render.cpp glCanvas.cpp smoke.cpp smoke_render.cpp
          smoke_render.cpp
+         Generating Code...
+         Compiling...
          smoke.cpp
      1>c:\users\ed\smoke_simulation\smoke_simulation\smoke_simulation\smoke.cpp(569): warning C4101: 'w' : unreferenced local variable
      1>c:\users\ed\smoke_simulation\smoke_simulation\smoke_simulation\smoke.cpp(570): warning C4101: 'C' : unreferenced local variable
@@ -41,4 +43,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:06.01
+Time Elapsed 00:00:05.85

@@ -36,19 +36,19 @@ void Smoke::setupVBOs() {
   // =====================================================================================
   // setup the particles
   // =====================================================================================
-  for (int x = 0; x < nx; x++) {
-    for (int y = 0; y < ny; y++) {
-      for (int z = 0; z < nz; z++) {
-	Cell *cell = getCell(x,y,z);
-	std::vector<FluidParticle*> &particles = cell->getParticles();
-	for (unsigned int iter = 0; iter < particles.size(); iter++) {
-	  FluidParticle *p = particles[iter];
-	  Vec3f v = p->getPosition();
-	  smoke_particles.push_back(VBOPos(v));
+	for (int x = 0; x < nx; x++) {
+		for (int y = 0; y < ny; y++) {
+			for (int z = 0; z < nz; z++) {
+				Cell *cell = getCell(x,y,z);
+				std::vector<SmokeParticle*> &particles = cell->getParticles();
+				for (unsigned int iter = 0; iter < particles.size(); iter++) {
+					SmokeParticle *p = particles[iter];
+					Vec3f v = p->getPosition();
+					smoke_particles.push_back(VBOPos(v));
+				}
+			}
+		}
 	}
-      }
-    }
-  }
 
   // =====================================================================================
   // visualize the velocity
@@ -274,7 +274,7 @@ void Smoke::drawVBOs() {
     glVertexPointer(3, GL_FLOAT,sizeof(VBOPos), 0);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VBOPos), 0);
-    glDrawArrays(GL_POINTS, 0, smoke_particles.size());
+    glDrawArrays(GL_POINT, 0, smoke_particles.size());
     glDisableClientState(GL_VERTEX_ARRAY);
     glDisableVertexAttribArray(0);
   }

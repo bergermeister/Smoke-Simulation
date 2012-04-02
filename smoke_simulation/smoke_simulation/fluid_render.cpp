@@ -40,9 +40,9 @@ void Fluid::setupVBOs() {
     for (int y = 0; y < ny; y++) {
       for (int z = 0; z < nz; z++) {
 	Cell *cell = getCell(x,y,z);
-	std::vector<FluidParticle*> &particles = cell->getParticles();
+	std::vector<SmokeParticle*> &particles = cell->getParticles();
 	for (unsigned int iter = 0; iter < particles.size(); iter++) {
-	  FluidParticle *p = particles[iter];
+	  SmokeParticle *p = particles[iter];
 	  Vec3f v = p->getPosition();
 	  fluid_particles.push_back(VBOPos(v));
 	}
