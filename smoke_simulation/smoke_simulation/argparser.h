@@ -26,16 +26,19 @@ public:
       } else if (argv[i] == std::string("-fluid")) {
         i++; assert (i < argc); 
         fluid_file = argv[i];
+	  }else if (argv[i] == std::string("-smoke")){
+		  i++; assert(i < argc);
+		  smoke_file = argv[i];
       } else if (argv[i] == std::string("-size")) {
         i++; assert (i < argc); 
-	width = height = atoi(argv[i]);
+		width = height = atoi(argv[i]);
       } else if (argv[i] == std::string("-timestep")) {
-	i++; assert (i < argc); 
-	timestep = atof(argv[i]);
+		i++; assert (i < argc); 
+		timestep = atof(argv[i]);
         assert (timestep > 0);
       } else {
-	printf ("whoops error with command line argument %d: '%s'\n",i,argv[i]);
-	assert(0);
+		printf ("whoops error with command line argument %d: '%s'\n",i,argv[i]);
+		assert(0);
       }
     }
   }
@@ -79,6 +82,7 @@ public:
 
   std::string cloth_file;
   std::string fluid_file;
+  std::string smoke_file;
   int width;
   int height;
 

@@ -8,7 +8,7 @@
 
 int main(int argc, char *argv[]) {
   ArgParser args(argc, argv);
-  if (args.cloth_file == "" && args.fluid_file == "") {
+  if (args.cloth_file == "" && args.fluid_file == "" && args.smoke_file == "") {
     std::cout << "ERROR: no simulation specified" << std::endl;
     return 0;
   }

@@ -1,8 +1,8 @@
 #include "glCanvas.h"
 #include "argparser.h"
 #include "camera.h"
-#include "cloth.h"
 #include "fluid.h"
+#include "smoke.h"
 #include "matrix.h"
 
 // ========================================================
@@ -10,8 +10,8 @@
 
 ArgParser* GLCanvas::args = NULL;
 Camera* GLCanvas::camera = NULL;
-Cloth* GLCanvas::cloth = NULL;
 Fluid* GLCanvas::fluid = NULL;
+Smoke* GLCanvas::smoke = NULL;
 BoundingBox GLCanvas::bbox;
 
 int GLCanvas::mouseButton = 0;
@@ -32,8 +32,8 @@ bool GLCanvas::altPressed = false;
 
 void GLCanvas::initialize(ArgParser *_args) {
   args = _args;
-  cloth = NULL;
   fluid = NULL;
+  smoke = NULL;
 
   Vec3f camera_position = Vec3f(0,0,5);
   Vec3f point_of_interest = Vec3f(0,0,0);
@@ -87,17 +87,17 @@ void GLCanvas::initialize(ArgParser *_args) {
 
 
 
-void GLCanvas::Load() {
-  delete cloth; 
-  cloth = NULL;
+void GLCanvas::Load() { 
   delete fluid; 
   fluid = NULL;
-  if (args->cloth_file != "")
-    cloth = new Cloth(args);
+  delete smoke;
+  smoke = NULL;
   if (args->fluid_file != "")
     fluid = new Fluid(args);
-  if (cloth) cloth->setupVBOs();
+  if(args->smoke_file != "")
+	  smoke = new Smoke(args);
   if (fluid) fluid->setupVBOs();
+  if (smoke) smoke->setupVBOs();
 }
 
 
@@ -150,16 +150,11 @@ void GLCanvas::display(void) {
   
   glMatrixMode(GL_MODELVIEW);
 
-  if (cloth != NULL) {
-    bbox.Set(cloth->getBoundingBox());
-    if (fluid != NULL) {
-      bbox.Extend(fluid->getBoundingBox());
-    }
-  } else {
-    assert (fluid != NULL);
-    bbox.Set(fluid->getBoundingBox()); 
-  }
-  
+  //assert (fluid != NULL);
+  assert (smoke != NULL);
+  //bbox.Set(fluid->getBoundingBox()); 
+  bbox.Set(smoke->getBoundingBox());
+
   // center the volume in the window
   Matrix m;
   m.setToIdentity();
@@ -171,8 +166,8 @@ void GLCanvas::display(void) {
   m.glGet(matrix_data);
   glMultMatrixf(matrix_data);
   
-  if (cloth) cloth->drawVBOs();
   if (fluid) fluid->drawVBOs();
+   if(smoke) smoke->drawVBOs();
 
   if (args->bounding_box) {
     bbox.setupVBOs();
@@ -260,12 +255,6 @@ void GLCanvas::keyboard(unsigned char key, int /*x*/, int /*y*/) {
     else
       printf ("animation stopped, press 'A' to start\n");
     break;
-  case ' ':
-    // a single step of animation
-    if (cloth) cloth->Animate();
-    if (fluid) fluid->Animate();
-    glutPostRedisplay();
-    break; 
   case 'm':  case 'M': 
     args->particles = !args->particles;
     glutPostRedisplay();
@@ -285,6 +274,7 @@ void GLCanvas::keyboard(unsigned char key, int /*x*/, int /*y*/) {
   case 'd':  case 'D': 
     args->dense_velocity = (args->dense_velocity+1)%4;
     if (fluid) fluid->setupVBOs();
+	if (smoke) smoke->setupVBOs();
     glutPostRedisplay();
     break; 
   case 's':  case 'S': 
@@ -316,23 +306,23 @@ void GLCanvas::keyboard(unsigned char key, int /*x*/, int /*y*/) {
     std::cout << "timestep doubled:  " << args->timestep << " -> ";
     args->timestep *= 2.0; 
     std::cout << args->timestep << std::endl;
-    if (cloth) cloth->setupVBOs();
     if (fluid) fluid->setupVBOs();
+	if (smoke) smoke->setupVBOs();
     glutPostRedisplay();
     break;
   case '-': case '_':
     std::cout << "timestep halved:  " << args->timestep << " -> ";
     args->timestep /= 2.0; 
     std::cout << args->timestep << std::endl;
-    if (cloth) cloth->setupVBOs();
     if (fluid) fluid->setupVBOs();
+	if (smoke) smoke->setupVBOs();
     glutPostRedisplay();
     break;
   case 'q':  case 'Q':
-    delete cloth;
-    cloth = NULL;
     delete fluid;
     fluid = NULL;
+	delete smoke;
+	smoke = NULL;
     delete camera;
     camera = NULL;
     printf ("program exiting\n");
@@ -348,8 +338,8 @@ void GLCanvas::idle() {
   if (args->animate) {
     // do 10 steps of animation before rendering
     for (int i = 0; i < 10; i++) {
-      if (cloth) cloth->Animate();
       if (fluid) fluid->Animate();
+	  if (smoke) smoke->Animate();
     }
     glutPostRedisplay();
   }

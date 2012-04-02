@@ -39,6 +39,12 @@
     <ClCompile Include="boundingbox.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="smoke.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="smoke_render.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="vectors.h">
@@ -96,6 +102,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="array2d.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="smoke.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

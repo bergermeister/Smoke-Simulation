@@ -428,7 +428,7 @@ double Fluid::interpolateIsovalue(const Vec3f &v) const {
 
 
 // ==============================================================
-
+/*
 void setupCubeVBO(const Vec3f pts[8], const Vec3f &color, std::vector<VBOPosNormalColor> &faces) {
   
   faces.push_back(VBOPosNormalColor(pts[0],Vec3f(-1,0,0),color));
@@ -495,3 +495,4 @@ void setupConeVBO(const Vec3f pts[5], const Vec3f &color, std::vector<VBOPosNorm
 }
 
 // ==============================================================
+*/

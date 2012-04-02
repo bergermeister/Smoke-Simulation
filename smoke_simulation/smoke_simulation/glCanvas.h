@@ -29,8 +29,8 @@
 
 class ArgParser;
 class Camera;
-class Cloth;
 class Fluid;
+class Smoke;
 
 // ====================================================================
 // NOTE:  All the methods and variables of this class are static
@@ -54,8 +54,8 @@ private:
   // various static variables
   static ArgParser *args;
   static Camera *camera;
-  static Cloth *cloth;
   static Fluid *fluid;
+  static Smoke *smoke;
   static BoundingBox bbox;
 
   // state of the mouse cursor

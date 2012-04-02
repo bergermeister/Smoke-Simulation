@@ -1,0 +1,16 @@
+grid 5 5 1
+cell_dimensions 30 30 30
+
+flow compressible
+xy_boundary free_slip
+yz_boundary free_slip
+zx_boundary free_slip
+viscosity 0.05
+gravity 0
+
+initial_particles everywhere random
+density 64
+
+initial_velocity random
+
+
