@@ -17,20 +17,23 @@ class OCTree {
 
   // ========================
   // CONSTRUCTOR & DESTRUCTOR
-  OCTree(const BoundingBox &_bbox, int _depth=0) {
+  OCTree(BoundingBox * &_bbox, int _depth) {
     bbox = _bbox;
     depth = _depth;
     for(int i = 0; i < 8; i++){
 		child[i] = NULL;
-	}     
+	}
+	split_center = (bbox->getMin() + bbox->getMax())*0.5;
   }
+  OCTree() { assert(0); }
   ~OCTree();
 
   // =========
   // ACCESSORS
   // boundingbox
-  const Vec3f& getMin() const { return bbox.getMin(); }
-  const Vec3f& getMax() const { return bbox.getMax(); }
+  const Vec3f& getMin() const { return bbox->getMin(); }
+  const Vec3f& getMax() const { return bbox->getMax(); }
+  const Vec3f& getCenter() const { return split_center; }
   bool overlaps(const BoundingBox &bb) const;
   // hierarchy
   int getDepth() const { return depth; }
@@ -41,12 +44,14 @@ class OCTree {
   const OCTree* getChild(int i) const { assert (!isLeaf()); assert (child[i] != NULL); return child[i]; }
   
   // Smoke Particles
-  const std::vector<SmokeParticle*>& getParticles() const { return particles; }
-  void CollectParticlesInBox(const BoundingBox &bb, std::vector<SmokeParticle*> &particles) const;
+  BoundingBox *getCell(double x, double y, double z);
+  //std::vector<SmokeParticle*>& getParticles() const { return bbox.getParticles(); }
+  std::vector<SmokeParticle*>& getParticles() { return bbox->getParticles(); }
+  void CollectParticlesInBox(const BoundingBox &bb, std::vector<SmokeParticle*> &particles) ;
 
   // =========
   // MODIFIERS
-  void AddParticle(const SmokeParticle* &p);
+  void AddParticle(const SmokeParticle* p);
   bool ParticleInCell(const SmokeParticle* &p);
 
  private:
@@ -55,11 +60,10 @@ class OCTree {
   void SplitCell();
 
   // REPRESENTATION
-  BoundingBox bbox;
+  BoundingBox *bbox;
   OCTree* child[8];
   Vec3f split_center;
   double split_value;
-  std::vector<SmokeParticle*> particles;
   int depth;
 };
 
