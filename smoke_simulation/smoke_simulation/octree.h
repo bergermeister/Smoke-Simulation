@@ -41,7 +41,7 @@ class OCTree {
 	  for(int i = 0; i < 8; i++)
 		if (child[i]!=NULL) return false;
     return true; }
-  const OCTree* getChild(int i) const { assert (!isLeaf()); assert (child[i] != NULL); return child[i]; }
+  OCTree* getChild(int i) const { assert (!isLeaf()); assert (child[i] != NULL); return child[i]; }
   
   // Smoke Particles
   BoundingBox *getCell(double x, double y, double z);

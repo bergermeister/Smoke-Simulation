@@ -36,19 +36,23 @@ void Smoke::setupVBOs() {
   // =====================================================================================
   // setup the particles
   // =====================================================================================
-  for (int x = 0; x < nx; x++) {
-    for (int y = 0; y < ny; y++) {
-      for (int z = 0; z < nz; z++) {
-	Cell *cell = getCell(x,y,z);
-	std::vector<SmokeParticle*> &particles = cell->getParticles();
-	for (unsigned int iter = 0; iter < particles.size(); iter++) {
-	  SmokeParticle *p = particles[iter];
-	  Vec3f v = p->getPosition();
-	  smoke_particles.push_back(VBOPos(v));
+	for (int x = 0; x < nx; x++)
+	{
+		for (int y = 0; y < ny; y++)
+		{
+			for (int z = 0; z < nz; z++)
+			{
+				BoundingBox *bb = getCell(x,y,z);
+				std::vector<SmokeParticle*> &particles = bb->getParticles();
+				for (unsigned int iter = 0; iter < particles.size(); iter++)
+				{
+					SmokeParticle *p = particles[iter];
+					Vec3f v = p->getPosition();
+					smoke_particles.push_back(VBOPos(v));
+				}
+			}
+		}
 	}
-      }
-    }
-  }
 
   // =====================================================================================
   // visualize the velocity
@@ -167,60 +171,74 @@ void Smoke::setupVBOs() {
   // =====================================================================================
   // visualize the cell pressure
   // =====================================================================================
-  for (int i = 0; i < nx; i++) {
-    for (int j = 0; j < ny; j++) {
-      for (int k = 0; k < nz; k++) {
-	Vec3f pts[8] = { Vec3f((i+0.1)*dx,(j+0.1)*dy,(k+0.1)*dz),
-			 Vec3f((i+0.1)*dx,(j+0.1)*dy,(k+0.9)*dz),
-			 Vec3f((i+0.1)*dx,(j+0.9)*dy,(k+0.1)*dz),
-			 Vec3f((i+0.1)*dx,(j+0.9)*dy,(k+0.9)*dz),
-			 Vec3f((i+0.9)*dx,(j+0.1)*dy,(k+0.1)*dz),
-			 Vec3f((i+0.9)*dx,(j+0.1)*dy,(k+0.9)*dz),
-			 Vec3f((i+0.9)*dx,(j+0.9)*dy,(k+0.1)*dz),
-			 Vec3f((i+0.9)*dx,(j+0.9)*dy,(k+0.9)*dz) };
-          double p = getCell(i,j,k)->getPressure();
-          p *= 0.1;
-          if (p > 1) p = 1;
-          if (p < -1) p = -1;
-          assert(p >= -1 && p <= 1);
-          Vec3f color;
-	  if (p < 0) {
-            color = Vec3f(1+p,1+p,1);
-          } else {
-            color = Vec3f(1,1-p,1-p);
-          }
-	  setupCubeVBO(pts,color,smoke_pressure_vis);
-      }
-    }
-  }
+	for (int i = 0; i < nx; i++) 
+	{
+		for (int j = 0; j < ny; j++)
+		{
+			for (int k = 0; k < nz; k++)
+			{
+				Vec3f pts[8] = { Vec3f((i+0.1)*dx,(j+0.1)*dy,(k+0.1)*dz),
+				Vec3f((i+0.1)*dx,(j+0.1)*dy,(k+0.9)*dz),
+				Vec3f((i+0.1)*dx,(j+0.9)*dy,(k+0.1)*dz),
+				Vec3f((i+0.1)*dx,(j+0.9)*dy,(k+0.9)*dz),
+				Vec3f((i+0.9)*dx,(j+0.1)*dy,(k+0.1)*dz),
+				Vec3f((i+0.9)*dx,(j+0.1)*dy,(k+0.9)*dz),
+				Vec3f((i+0.9)*dx,(j+0.9)*dy,(k+0.1)*dz),
+				Vec3f((i+0.9)*dx,(j+0.9)*dy,(k+0.9)*dz) };
+				double p = getCell(i,j,k)->getPressure();
+				p *= 0.1;
+				if (p > 1) p = 1;
+				if (p < -1) p = -1;
+				assert(p >= -1 && p <= 1);
+				Vec3f color;
+				if (p < 0) 
+				{
+					color = Vec3f(1+p,1+p,1);
+				} 
+				else 
+				{
+					color = Vec3f(1,1-p,1-p);
+				}
+				setupCubeVBO(pts,color,smoke_pressure_vis);
+			}
+		}
+	}
 
   // =====================================================================================
   // render the MAC cells (FULL, SURFACE, or EMPTY)
   // =====================================================================================
-  for (int i = 0; i < nx; i++) {
-    for (int j = 0; j < ny; j++) {
-      for (int k = 0; k < nz; k++) {
-	Vec3f pts[8] = { Vec3f((i+0.1)*dx,(j+0.1)*dy,(k+0.1)*dz),
-			 Vec3f((i+0.1)*dx,(j+0.1)*dy,(k+0.9)*dz),
-			 Vec3f((i+0.1)*dx,(j+0.9)*dy,(k+0.1)*dz),
-			 Vec3f((i+0.1)*dx,(j+0.9)*dy,(k+0.9)*dz),
-			 Vec3f((i+0.9)*dx,(j+0.1)*dy,(k+0.1)*dz),
-			 Vec3f((i+0.9)*dx,(j+0.1)*dy,(k+0.9)*dz),
-			 Vec3f((i+0.9)*dx,(j+0.9)*dy,(k+0.1)*dz),
-			 Vec3f((i+0.9)*dx,(j+0.9)*dy,(k+0.9)*dz) };
-	Cell *cell = getCell(i,j,k);
-	Vec3f color;
-	if (cell->getStatus() == CELL_FULL) {
-	  color = Vec3f(1,0,0);
-	} else if (cell->getStatus() == CELL_SURFACE) {
-	  color=Vec3f(0,0,1);
-	} else {
-	  continue;
+	for (int i = 0; i < nx; i++)
+	{
+		for (int j = 0; j < ny; j++) 
+		{
+			for (int k = 0; k < nz; k++) 
+			{
+				Vec3f pts[8] = { Vec3f((i+0.1)*dx,(j+0.1)*dy,(k+0.1)*dz),
+				Vec3f((i+0.1)*dx,(j+0.1)*dy,(k+0.9)*dz),
+				Vec3f((i+0.1)*dx,(j+0.9)*dy,(k+0.1)*dz),
+				Vec3f((i+0.1)*dx,(j+0.9)*dy,(k+0.9)*dz),
+				Vec3f((i+0.9)*dx,(j+0.1)*dy,(k+0.1)*dz),
+				Vec3f((i+0.9)*dx,(j+0.1)*dy,(k+0.9)*dz),
+				Vec3f((i+0.9)*dx,(j+0.9)*dy,(k+0.1)*dz),
+				Vec3f((i+0.9)*dx,(j+0.9)*dy,(k+0.9)*dz) };
+				BoundingBox * bb = getCell(i,j,k);
+				Vec3f color;
+				if (bb->getStatus() == CELL_FULL) 
+				{
+					color = Vec3f(1,0,0);
+				} 
+					else if (bb->getStatus() == CELL_SURFACE) 
+				{
+					color=Vec3f(0,0,1);
+				} 
+				else 
+				{
+					continue;
+				}
+				setupCubeVBO(pts,color,smoke_cell_type_vis);
+			}
+		}
 	}
-	setupCubeVBO(pts,color,smoke_cell_type_vis);
-      }
-    }
-  }
 
   // cleanup old buffer data (if any)
   cleanupVBOs();
@@ -383,17 +401,17 @@ void Smoke::cleanupVBOs() {
 // ==============================================================
 
 double Smoke::getIsovalue(int i, int j, int k) const {
-  i = my_max(0,(my_min(i,nx-1)));
-  j = my_max(0,(my_min(j,ny-1)));
-  k = my_max(0,(my_min(k,nz-1)));
-  Cell *c = getCell(i,j,k);
-  if (c->getStatus() == CELL_EMPTY) return 0;
-  // note: this is technically not a correct thing to do
-  //       the number of particles is not an indication of it's "fullness"
-  if (c->getStatus() == CELL_SURFACE) return 0.5 + c->numParticles()/double(density);
-  if (c->getStatus() == CELL_FULL) return 2;
-  assert(0);
-  return 0;
+	i = my_max(0,(my_min(i,nx-1)));
+	j = my_max(0,(my_min(j,ny-1)));
+	k = my_max(0,(my_min(k,nz-1)));
+	BoundingBox * bb = getCell(i,j,k);
+	if (bb->getStatus() == CELL_EMPTY) return 0;
+	// note: this is technically not a correct thing to do
+	//       the number of particles is not an indication of it's "fullness"
+	if (bb->getStatus() == CELL_SURFACE) return 0.5 + bb->numParticles()/double(density);
+	if (bb->getStatus() == CELL_FULL) return 2;
+	assert(0);
+	return 0;
 }
 
 // ==============================================================

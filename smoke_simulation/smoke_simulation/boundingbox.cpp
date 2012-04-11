@@ -1,7 +1,8 @@
 #include "glCanvas.h"
+#include "vbo_structs.h"
 #include "boundingbox.h"
 #include "utils.h"
-#include "vbo_structs.h"
+
 
 // ====================================================================
 // ====================================================================

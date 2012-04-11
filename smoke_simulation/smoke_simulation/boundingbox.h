@@ -5,10 +5,9 @@
 #include <vector>
 #include <algorithm>
 #include "vectors.h"
-#include "utils.h"
+
 #include "vbo_structs.h"
-
-
+#include "utils.h"
 // ====================================================================
 
 class SmokeParticle {

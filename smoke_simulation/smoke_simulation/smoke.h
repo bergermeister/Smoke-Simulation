@@ -8,6 +8,7 @@
 #include "vectors.h"
 #include "cell.h"
 #include "vbo_structs.h"
+#include "octree.h"
 
 class ArgParser;
 class MarchingCubes;
@@ -46,7 +47,7 @@ private:
     assert (k >= -1 && k <= nz);
     return (i+1)*(ny+2)*(nz+2) + (j+1)*(nz+2) + (k+1);
   }
-  Cell* getCell(int i, int j, int k) const { return &cells[Index(i,j,k)]; }
+  BoundingBox *getCell(int i, int j, int k) const { return oc->getCell(i, j, k); }
 
   // =================
   // ANIMATION HELPERS
@@ -114,7 +115,9 @@ private:
   // Smoke parameters
   int nx,ny,nz;     // number of grid cells in each dimension
   double dx,dy,dz;  // dimensions of each grid cell
-  Cell *cells;      // NOTE: padded with extra cells on each side
+  OCTree *oc;
+  BoundingBox * grid;
+  //Cell *cells;      // NOTE: padded with extra cells on each side
 
   // simulation parameters
   bool xy_free_slip;

@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{C7996569-2F1D-47BA-AD1D-BA186FA15CA2}</ProjectGuid>
+    <ProjectGuid>{7DD8F1C2-1477-4732-BF5B-80FFD3560E06}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>smoke_simulation</RootNamespace>
   </PropertyGroup>
@@ -75,38 +75,39 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="boundingbox.cpp" />
-    <ClCompile Include="camera.cpp" />
-    <ClCompile Include="fluid.cpp" />
-    <ClCompile Include="fluid_render.cpp" />
-    <ClCompile Include="glCanvas.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="marching_cubes.cpp" />
-    <ClCompile Include="matrix.cpp" />
-    <ClCompile Include="smoke.cpp" />
-    <ClCompile Include="smoke_render.cpp" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="argparser.h" />
     <ClInclude Include="array.h" />
     <ClInclude Include="array2d.h" />
     <ClInclude Include="boundingbox.h" />
     <ClInclude Include="camera.h" />
     <ClInclude Include="cell.h" />
-    <ClInclude Include="fluid.h" />
-    <ClInclude Include="glCanvas.h" />
-    <ClInclude Include="marching_cubes.h" />
-    <ClInclude Include="matrix.h" />
-    <ClInclude Include="MersenneTwister.h" />
+    <ClInclude Include="cloth.h" />
     <ClInclude Include="numtraits.h" />
     <ClInclude Include="octree.h" />
     <ClInclude Include="point3d.h" />
     <ClInclude Include="shareddata.h" />
     <ClInclude Include="smoke.h" />
+    <ClInclude Include="glCanvas.h" />
+    <ClInclude Include="marching_cubes.h" />
+    <ClInclude Include="matrix.h" />
+    <ClInclude Include="MersenneTwister.h" />
     <ClInclude Include="tinyvector.h" />
     <ClInclude Include="utils.h" />
     <ClInclude Include="vbo_structs.h" />
     <ClInclude Include="vectors.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="boundingbox.cpp" />
+    <ClCompile Include="camera.cpp" />
+    <ClCompile Include="cloth.cpp" />
+    <ClCompile Include="cloth_render.cpp" />
+    <ClCompile Include="octree.cpp" />
+    <ClCompile Include="smoke.cpp" />
+    <ClCompile Include="smoke_render.cpp" />
+    <ClCompile Include="glCanvas.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="marching_cubes.cpp" />
+    <ClCompile Include="matrix.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

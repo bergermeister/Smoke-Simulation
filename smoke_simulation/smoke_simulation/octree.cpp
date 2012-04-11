@@ -131,7 +131,7 @@ void OCTree::CollectParticlesInBox(const BoundingBox &bb, std::vector<SmokeParti
 		if (node->isLeaf()) {
 			// if this cell overlaps & is a leaf, add all of the photons into the master list
 			// NOTE: these photons may not be inside of the query bounding box
-			const std::vector<SmokeParticle *> &particles2 = node->getParticles();
+			const std::vector<SmokeParticle *> particles2 = node->getParticles();
 			int num_particles = particles2.size();
 			for (int i = 0; i < num_particles; i++) 
 			{
@@ -157,36 +157,44 @@ void OCTree::SplitCell() {
 	double dz = (max.z()-min.z() )/2;
 	// split this cell around the center
 	// Bottom 4 quadrants
-	child[0] = new OCTree(BoundingBox(min, c), depth+1);
+	BoundingBox * b = new BoundingBox(min, c);
+	child[0] = new OCTree(b, depth+1);
 
 	Vec3f min2 = Vec3f(min.x()+dx, min.y(), min.z());
 	Vec3f max2 = Vec3f(c.x()+dx, c.y(), c.z());
-	child[1] = new OCTree(BoundingBox(min2, max2), depth+1);
+	b = new BoundingBox(min2, max2);
+	child[1] = new OCTree(b, depth+1);
 
 	min2 = Vec3f(min.x()+dx, min.y()+dy, min.z());
 	max2 = Vec3f(c.x()+dx, c.y()+dy, c.z());
-	child[2] = new OCTree(BoundingBox(min2, max2), depth+1);
+	b = new BoundingBox(min2, max2);
+	child[2] = new OCTree(b, depth+1);
 
 	min2 = Vec3f(min.x(), min.y()+dy, min.z());
 	max2 = Vec3f(c.x(), c.y()+dy, c.z());
-	child[3] = new OCTree(BoundingBox(min2, max2), depth+1);
+	b = new BoundingBox(min2, max2);
+	child[3] = new OCTree(b, depth+1);
 
 	// Top 4 quadrants
 	min2 = Vec3f(min.x(), min.y(), min.z() + dz);
 	max2 = Vec3f(c.x(), c.y(), c.z() + dz);
-	child[4] = new OCTree(BoundingBox(min2, max2), depth+1);
+	b = new BoundingBox(min2, max2);
+	child[4] = new OCTree(b, depth+1);
 
-	Vec3f min2 = Vec3f(min.x()+dx, min.y(), min.z()+dz);
-	Vec3f max2 = Vec3f(c.x()+dx, c.y(), c.z()+dz);
-	child[5] = new OCTree(BoundingBox(min2, max2), depth+1);
+	min2 = Vec3f(min.x()+dx, min.y(), min.z()+dz);
+	max2 = Vec3f(c.x()+dx, c.y(), c.z()+dz);
+	b = new BoundingBox(min2, max2);
+	child[5] = new OCTree(b, depth+1);
 
 	min2 = Vec3f(min.x()+dx, min.y()+dy, min.z()+dz);
 	max2 = Vec3f(c.x()+dx, c.y()+dy, c.z()+dz);
-	child[6] = new OCTree(BoundingBox(min2, max2), depth+1);
+	b = new BoundingBox(min2, max2);
+	child[6] = new OCTree(b, depth+1);
 
 	min2 = Vec3f(min.x(), min.y()+dy, min.z()+dz);
 	max2 = Vec3f(c.x(), c.y()+dy, c.z()+dz);
-	child[7] = new OCTree(BoundingBox(min2, max2), depth+1);
+	b = new BoundingBox(min2, max2);
+	child[7] = new OCTree(b, depth+1);
 
 	int num_particles = bbox->numParticles();
 	std::vector<SmokeParticle*> tmp = bbox->getParticles();
@@ -194,7 +202,7 @@ void OCTree::SplitCell() {
 	// add all the particless to one of those children
 	for (int i = 0; i < num_particles; i++) 
 	{
-		const SmokeParticle * &p = tmp[i];
+		const SmokeParticle * p = tmp[i];
 		this->AddParticle(p);
 	}
 }
