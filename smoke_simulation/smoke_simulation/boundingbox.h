@@ -1,13 +1,14 @@
 #ifndef _BOUNDING_BOX_H_
 #define _BOUNDING_BOX_H_
 
+#include "glCanvas.h"
 #include <cassert>
 #include <vector>
 #include <algorithm>
 #include "vectors.h"
-
-#include "vbo_structs.h"
 #include "utils.h"
+#include "vbo_structs.h"
+
 // ====================================================================
 
 class SmokeParticle {

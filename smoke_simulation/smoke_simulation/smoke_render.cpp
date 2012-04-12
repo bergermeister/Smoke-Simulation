@@ -254,11 +254,12 @@ void Smoke::setupVBOs() {
     glBindBuffer(GL_ARRAY_BUFFER,smoke_face_velocity_vis_VBO); 
     glBufferData(GL_ARRAY_BUFFER,sizeof(VBOPosNormalColor)*smoke_face_velocity_vis.size(),&smoke_face_velocity_vis[0],GL_STATIC_DRAW); 
   }
+  /*
   glBindBuffer(GL_ARRAY_BUFFER,smoke_pressure_vis_VBO); 
   glBufferData(GL_ARRAY_BUFFER,sizeof(VBOPosNormalColor)*smoke_pressure_vis.size(),&smoke_pressure_vis[0],GL_STATIC_DRAW); 
   glBindBuffer(GL_ARRAY_BUFFER,smoke_cell_type_vis_VBO); 
   glBufferData(GL_ARRAY_BUFFER,sizeof(VBOPosNormalColor)*smoke_cell_type_vis.size(),&smoke_cell_type_vis[0],GL_STATIC_DRAW); 
-
+  */
   HandleGLError("leaving setup smoke");
 
   // =====================================================================================
@@ -401,6 +402,8 @@ void Smoke::cleanupVBOs() {
 // ==============================================================
 
 double Smoke::getIsovalue(int i, int j, int k) const {
+	// NEED TO IMPLEMENT
+	/*
 	i = my_max(0,(my_min(i,nx-1)));
 	j = my_max(0,(my_min(j,ny-1)));
 	k = my_max(0,(my_min(k,nz-1)));
@@ -411,6 +414,7 @@ double Smoke::getIsovalue(int i, int j, int k) const {
 	if (bb->getStatus() == CELL_SURFACE) return 0.5 + bb->numParticles()/double(density);
 	if (bb->getStatus() == CELL_FULL) return 2;
 	assert(0);
+	*/
 	return 0;
 }
 

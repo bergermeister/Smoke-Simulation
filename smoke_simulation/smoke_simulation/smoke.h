@@ -35,7 +35,7 @@ public:
   // ANIMATION & RENDERING FUNCTIONS
   void Animate();
   BoundingBox getBoundingBox() const {
-    return BoundingBox(Vec3f(0,0,0),Vec3f(nx*dx,ny*dy,nz*dz)); }
+    return BoundingBox(Vec3f(0,0,0),Vec3f(nx,ny,nz)); }
 
 private:
 

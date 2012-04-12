@@ -99,6 +99,7 @@ void Smoke::Load() {
 	} 
 	else 
 	{
+		/*
 		assert (token2 == "random");
 		int i,j,k;
 		double max_dim = my_max(dx,my_max(dy,dz));
@@ -114,6 +115,7 @@ void Smoke::Load() {
 				}
 			}
 		}
+		*/
 	}
 	// read in custom velocities
 	while(istr >> token) 
@@ -145,7 +147,7 @@ bool Smoke::inShape(Vec3f &pos, const std::string &shape) {
 	else if (shape == "left") 
 	{
 		// a blob of particles on the lower left (for the dam)
-		return (pos.x() < 0.2*nx*dx && pos.y() < 0.5*ny*dy);
+		return (pos.x() < 0.2*nx && pos.y() < 0.5*ny);
 	} 
 	else if (shape == "drop") 
 	{
@@ -184,6 +186,7 @@ void Smoke::GenerateParticles(const std::string &shape, const std::string &place
 					{
 						SmokeParticle *p = new SmokeParticle();
 						p->setPosition(pos);
+						std::cout << p->getPosition().x() << ',' << p->getPosition().y() << ',' << p->getPosition().z() << std::endl;
 						oc->AddParticle(p);
 					}
 				}
@@ -194,13 +197,14 @@ void Smoke::GenerateParticles(const std::string &shape, const std::string &place
 	{
 		assert (placement == "random");
 		// note: we don't necessarily have the same number of particles in each cell
-		for (int n = 0; n < nx*ny*nz*density; n++) {
-			Vec3f pos = Vec3f(args->mtrand.rand()*nx*dx,
-			args->mtrand.rand()*ny*dy,
-			args->mtrand.rand()*nz*dz);
-			if (inShape(pos,shape)) {      
+		for (int n = 0; n < nx*ny*nz*density; n++) 
+		{
+			Vec3f pos = Vec3f(args->mtrand.rand()*nx, args->mtrand.rand()*ny, args->mtrand.rand()*nz);
+			if (inShape(pos,shape)) 
+			{      
 				SmokeParticle *p = new SmokeParticle();
 				p->setPosition(pos);
+				std::cout << p->getPosition().x() << ',' << p->getPosition().y() << ',' << p->getPosition().z() << std::endl;
 				oc->AddParticle(p);
 			}
 		}

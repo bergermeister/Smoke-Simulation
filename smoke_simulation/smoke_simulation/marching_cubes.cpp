@@ -52,10 +52,13 @@ void MarchingCubes::setupVBOs() {
 
   // copy the data to each VBO
   int num_marching_cubes_tris = marching_cubes_tri_indices.size();
+  // THIS IS OBSOLETE
+  /*
   glBindBuffer(GL_ARRAY_BUFFER,marching_cubes_verts_VBO); 
   glBufferData(GL_ARRAY_BUFFER,sizeof(VBOPosNormal)*num_marching_cubes_tris*3,&marching_cubes_verts[0],GL_STATIC_DRAW); 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,marching_cubes_tri_indices_VBO); 
   glBufferData(GL_ELEMENT_ARRAY_BUFFER,sizeof(VBOIndexedTri)*num_marching_cubes_tris,&marching_cubes_tri_indices[0],GL_STATIC_DRAW);
+  */
 }
 
 
