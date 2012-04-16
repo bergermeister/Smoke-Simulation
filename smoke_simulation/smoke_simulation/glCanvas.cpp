@@ -32,8 +32,9 @@ void GLCanvas::initialize(ArgParser *_args) {
   args = _args;
   smoke = NULL;
 
-  Vec3f camera_position = Vec3f(0,0,5);
   Vec3f point_of_interest = Vec3f(0,0,0);
+  Vec3f camera_position = Vec3f(0,0,5);
+  
   Vec3f up = Vec3f(0,1,0);
   camera = new PerspectiveCamera(camera_position, point_of_interest, up, 20 * M_PI/180.0);
 
@@ -291,7 +292,11 @@ void GLCanvas::keyboard(unsigned char key, int /*x*/, int /*y*/) {
     // reset system
     Load();
     glutPostRedisplay();
-    break; 
+    break;
+  case 'o': case 'O':
+	  args->octree = !args->octree;
+	  glutPostRedisplay();
+	  break;
   case '+': case '=':
     std::cout << "timestep doubled:  " << args->timestep << " -> ";
     args->timestep *= 2.0; 

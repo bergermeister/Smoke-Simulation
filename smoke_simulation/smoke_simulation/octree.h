@@ -54,6 +54,9 @@ class OCTree {
   void AddParticle(const SmokeParticle* p);
   bool ParticleInCell(const SmokeParticle* &p);
 
+  void initializeVBOs() {bbox->initializeVBOs();}
+  void setupVBOs() {bbox->setupVBOs();}
+  void drawVBOs() {bbox->drawVBOs();}
  private:
 
   // HELPER FUNCTION
