@@ -12,6 +12,30 @@
 
 class ArgParser;
 class MarchingCubes;
+//woooooooooooooooooooooooooooooooooooooooo
+// ========================================================================
+// ========================================================================
+// data structure to store a segment
+
+class Segment {
+
+public:
+  // CONSTRUCTOR
+  Segment(const Ray &ray, double tstart, double tstop) {
+    // first clamp the segment to "reasonable" values 
+    // to make sure it is drawn correctly in OpenGL
+    if (tstart < -1000) tstart = -1000;
+    if (tstop  >  1000) tstop  =  1000;
+    a = ray.pointAtParameter(tstart);
+    b = ray.pointAtParameter(tstop); }
+  const Vec3f& getStart() const { return a; }
+  const Vec3f& getEnd() const { return b; }
+private:
+  // REPRESENTATION
+  Vec3f a;
+  Vec3f b;
+};
+
 
 // ========================================================================
 // ========================================================================
@@ -55,6 +79,7 @@ public:
   void setupVelocity();
   void setupFaceVelocity();
   void drawVBOs();
+  void setupVBOsR(); 
   void cleanupVBOs();
 
   // ===============================
@@ -62,7 +87,7 @@ public:
   void Animate();
   BoundingBox getBoundingBox() const {
     return BoundingBox(Vec3f(0,0,0),Vec3f(nx,ny,nz)); }
- //=================================================================================
+
   //Rendering
    // most of the time the RayTree is NOT activated, so the segments are not updated
   static void Activate() { Clear(); activated = 1; }
@@ -85,8 +110,10 @@ public:
     if (!activated) return;
     transmitted_segments.push_back(Segment(ray,tstart,tstop));
   }
-  std::vector<VBOPos> smoke_particlesHit;
-  GLuint smoke_particles_Hit_VBO;
+  
+    BoundingBox * grid;
+    std::vector<VBOPos> smoke_particlesHit;
+	GLuint smoke_particles_Hit_VBO;
 private:
 
   // ==============
@@ -166,7 +193,7 @@ private:
   int nx,ny,nz;     // number of grid cells in each dimension
   double dx,dy,dz;  // dimensions of each grid cell
   
-  BoundingBox * grid;
+
   //Cell *cells;      // NOTE: padded with extra cells on each side
 
   // simulation parameters
@@ -190,7 +217,7 @@ private:
   std::vector<VBOPosNormalColor> smoke_face_velocity_vis;
   std::vector<VBOPosNormalColor> smoke_pressure_vis;
   std::vector<VBOPosNormalColor> smoke_cell_type_vis;
-  
+
   //===============================================================================
   //Rendering
 

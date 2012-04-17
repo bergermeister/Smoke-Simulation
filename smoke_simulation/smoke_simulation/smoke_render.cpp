@@ -13,7 +13,7 @@
 
 // ==============================================================
 // ==============================================================
-/ Initialize the static variables
+// Initialize the static variables
 int Smoke::activated = 0;  
 std::vector<Segment> Smoke::main_segments;
 std::vector<Segment> Smoke::shadow_segments;
@@ -32,7 +32,7 @@ void Smoke::initializeVBOs() {
   glGenBuffers(1, &smoke_pressure_vis_VBO);
   glGenBuffers(1, &smoke_cell_type_vis_VBO);
   marchingCubes->initializeVBOs();
-  
+
    glGenBuffers(1, &smoke_particles_Hit_VBO);
    // =====================================================================================
   //Rendering
@@ -50,7 +50,7 @@ void Smoke::setupVBOs() {
   smoke_face_velocity_vis.clear();
   smoke_pressure_vis.clear();
   smoke_cell_type_vis.clear();
-
+   smoke_particlesHit.clear();
   // =====================================================================================
   // setup the particles
   // =====================================================================================
@@ -170,7 +170,8 @@ void Smoke::setupVBOs() {
     }
   }
   marchingCubes->setupVBOs();
-   setupVBOsR();   //rendering VBOs
+
+  setupVBOsR();   //rendering VBOs
 }
 
 void Smoke::setupVelocity()
@@ -484,7 +485,7 @@ void Smoke::drawVBOs() {
     glDrawArrays(GL_POINTS, 0, smoke_particles.size());
     glDisableClientState(GL_VERTEX_ARRAY);
     glDisableVertexAttribArray(0);
-	
+
 	glColor3f(255,0,0);
     glPointSize(5);
     glBindBuffer(GL_ARRAY_BUFFER, smoke_particles_Hit_VBO);
@@ -611,7 +612,7 @@ void Smoke::drawVBOs() {
   // =====================================================================================
   if (args->surface) {
     marchingCubes->drawVBOs();
-  }
+  } 
 
   // =====================================================================================
   //Rendering
@@ -636,7 +637,7 @@ void Smoke::drawVBOs() {
   glDrawElements(GL_LINES, num_edges*2, GL_UNSIGNED_INT, BUFFER_OFFSET(0));
   glDisableClientState(GL_COLOR_ARRAY);
   glDisableClientState(GL_VERTEX_ARRAY);
-  glEnable(GL_DEPTH_TEST);  
+  glEnable(GL_DEPTH_TEST);
 }
 
 void Smoke::cleanupVBOs() { 
@@ -645,7 +646,6 @@ void Smoke::cleanupVBOs() {
   glDeleteBuffers(1, &smoke_face_velocity_vis_VBO);  
   glDeleteBuffers(1, &smoke_pressure_vis_VBO);
   glDeleteBuffers(1, &smoke_cell_type_vis_VBO);
-  
   glDeleteBuffers(1, &smoke_particles_Hit_VBO);
  // glDeleteBuffers(1, &smoke_verts_VBO);
  // glDeleteBuffers(1, &smoke_edge_indices_VBO);
