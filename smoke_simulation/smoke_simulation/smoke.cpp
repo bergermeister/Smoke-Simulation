@@ -131,6 +131,23 @@ void Smoke::Load() {
 		else if	(token == "v") oc->getCell(i,j,k)->set_v_plus(velocity);
 		else if	(token == "w") oc->getCell(i,j,k)->set_w_plus(velocity);
 		else assert(0);
+		/*
+		std::vector<OCTree*> todo;  
+		todo.push_back(oc);
+		while (!todo.empty()) 
+		{
+			OCTree *node = todo.back();
+			todo.pop_back(); 
+			if (node->isLeaf()) {
+				std::cout << "Child at " << node->getCenter() << " | u: " << node->getCell()->get_u_plus() << std::endl;
+			} 
+			else 
+			{
+				// if this cell is not a leaf, explore both children
+				for(int i = 0; i < 8; i++) todo.push_back(node->getChild(i));
+			} 
+		}
+		*/
 	}
 	SetBoundaryVelocities();
 }
@@ -252,23 +269,37 @@ void Smoke::ComputeNewVelocities() {
 
   // using the formulas from Foster & Metaxas
   // NEED TO IMPLEMENT
-  /*
 	std::vector<OCTree*> todo;  
 	todo.push_back(oc);
+	// Compute new U
 	while (!todo.empty()) 
 	{
 		OCTree *node = todo.back();
 		todo.pop_back(); 
 		if (node->isLeaf()) {
-			double new_u_plus = get_u_plus(i,j,k) + dt * 
-			((1/dx) * (square(get_u_avg(i,j,k)) - square(get_u_avg(i+1,j,k))) +
-			(1/dy) * (get_uv_plus(i,j-1,k) - get_uv_plus(i,j,k)) + 
-			(1/dz) * (get_uw_plus(i,j,k-1) - get_uw_plus(i,j,k)) +
-			args->gravity.x() +
-			(1/dx) * (getPressure(i,j,k)-getPressure(i+1,j,k)) +
-			(viscosity/square(dx)) * (get_u_plus(i+1,j  ,k  ) - 2*get_u_plus(i,j,k) + get_u_plus(i-1,j  ,k  )) +
-			(viscosity/square(dy)) * (get_u_plus(i  ,j+1,k  ) - 2*get_u_plus(i,j,k) + get_u_plus(i  ,j-1,k  )) +
-			(viscosity/square(dz)) * (get_u_plus(i  ,j  ,k+1) - 2*get_u_plus(i,j,k) + get_u_plus(i  ,j  ,k-1)) );
+			//get_u_avg = 0.5*(get_u_plus(i-1,j,k)+get_u_plus(i,j,k)
+			//get_uv_plus = 0.5*(get_u_plus(i,j,k) + get_u_plus(i,j+1,k)) * 0.5*(get_v_plus(i,j,k) + get_v_plus(i+1,j,k));
+			Vec3f max = node->getCell()->getMax();
+			Vec3f min = node->getCell()->getMin();
+			BoundingBox * bb111 = node->getCell();															// i, j, k
+			BoundingBox * bb011 = oc->getCell(min.x() - 0.1, 0.5*(min.y()+max.y()), 0.5*(min.z()+max.z())); // i-1,j, k
+			BoundingBox * bb211 = oc->getCell(max.x() + 0.1, 0.5*(min.y()+max.y()), 0.5*(min.z()+max.z()));	// i+1,j, k
+			BoundingBox * bb101 = oc->getCell(0.5*(min.x()+max.x()), min.y() - 0.1, 0.5*(min.z()+max.z())); // i,j-1,k
+			BoundingBox * bb121 = oc->getCell(0.5*(min.x()+max.x()), max.y() + 0.1, 0.5*(min.z()+max.z()));	// i,j+1,k
+			BoundingBox * bb110 = oc->getCell(0.5*(min.x()+max.x()), 0.5*(min.y()+max.y()), min.z() - 0.1); // i,j,k-1
+			BoundingBox * bb112 = oc->getCell(0.5*(min.x()+max.x()), 0.5*(min.y()+max.y()), max.z() + 0.1);	// i,j,k+1
+			double new_u_plus = bb111->get_u_plus() + dt * 
+				((1/dx) * (square(0.5*(bb111->get_u_plus() + bb011->get_u_plus())) - square(0.5*(bb111->get_u_plus() + bb211->get_u_plus()))) +
+				(1/dy) * ( 0.5*(bb101->get_u_plus() + bb111->get_u_plus()) * 0.5*(bb101->get_v_plus() + bb111->get_v_plus())
+						 - 0.5*(bb111->get_u_plus() + bb121->get_u_plus()) * 0.5*(bb111->get_v_plus() + bb121->get_v_plus())) + 
+				(1/dz) * (0.5*(bb110->get_u_plus() + bb111->get_u_plus()) * 0.5*(bb110->get_w_plus() + bb111->get_w_plus())
+						 - 0.5*(bb111->get_u_plus() + bb112->get_u_plus()) * 0.5*(bb111->get_w_plus() + bb112->get_w_plus())) +
+				args->gravity.x() +
+				(1/dx) * (bb111->getPressure()-bb211->getPressure()) +
+				(viscosity/square(dx)) * (bb211->get_u_plus() - 2*bb111->get_u_plus() + bb011->get_u_plus()) +
+				(viscosity/square(dy)) * (bb121->get_u_plus() - 2*bb111->get_u_plus() + bb101->get_u_plus()) +
+				(viscosity/square(dz)) * (bb112->get_u_plus() - 2*bb111->get_u_plus() + bb110->get_u_plus()) );
+			bb111->set_new_u_plus(new_u_plus);
 		} 
 		else 
 		{
@@ -276,6 +307,85 @@ void Smoke::ComputeNewVelocities() {
 			for(int i = 0; i < 8; i++) todo.push_back(node->getChild(i));
 		}
 	}
+	todo.clear();
+	todo.push_back(oc);
+	// Compute new V
+	while (!todo.empty()) 
+	{
+		OCTree *node = todo.back();
+		todo.pop_back(); 
+		if (node->isLeaf()) {
+			//get_u_avg = 0.5*(get_u_plus(i-1,j,k)+get_u_plus(i,j,k)
+			//get_uv_plus = 0.5*(get_u_plus(i,j,k) + get_u_plus(i,j+1,k)) * 0.5*(get_v_plus(i,j,k) + get_v_plus(i+1,j,k));
+			Vec3f max = node->getCell()->getMax();
+			Vec3f min = node->getCell()->getMin();
+			BoundingBox * bb111 = node->getCell();															// i, j, k
+			BoundingBox * bb011 = oc->getCell(min.x() - 0.1, 0.5*(min.y()+max.y()), 0.5*(min.z()+max.z())); // i-1,j, k
+			BoundingBox * bb211 = oc->getCell(max.x() + 0.1, 0.5*(min.y()+max.y()), 0.5*(min.z()+max.z()));	// i+1,j, k
+			BoundingBox * bb101 = oc->getCell(0.5*(min.x()+max.x()), min.y() - 0.1, 0.5*(min.z()+max.z())); // i,j-1,k
+			BoundingBox * bb121 = oc->getCell(0.5*(min.x()+max.x()), max.y() + 0.1, 0.5*(min.z()+max.z()));	// i,j+1,k
+			BoundingBox * bb110 = oc->getCell(0.5*(min.x()+max.x()), 0.5*(min.y()+max.y()), min.z() - 0.1); // i,j,k-1
+			BoundingBox * bb112 = oc->getCell(0.5*(min.x()+max.x()), 0.5*(min.y()+max.y()), max.z() + 0.1);	// i,j,k+1
+
+			double new_v_plus = bb111->get_v_plus() + dt * 
+				((1/dx) * (0.5*(bb011->get_u_plus() + bb111->get_u_plus()) * 0.5*(bb011->get_v_plus() + bb111->get_v_plus())
+						 - 0.5*(bb111->get_u_plus() + bb211->get_u_plus()) * 0.5*(bb111->get_v_plus() + bb211->get_v_plus())) +
+                (1/dy) * (square(0.5*(bb111->get_v_plus() + bb101->get_v_plus())) - square(0.5*(bb111->get_v_plus() + bb121->get_v_plus()))) +
+                (1/dz) * (0.5*(bb110->get_v_plus() + bb111->get_v_plus()) * 0.5*(bb110->get_w_plus() + bb111->get_w_plus())
+						- 0.5*(bb111->get_v_plus() + bb112->get_v_plus()) * 0.5*(bb111->get_w_plus() + bb112->get_w_plus())) +
+                args->gravity.y() +
+                (1/dy) * (bb111->getPressure()-bb121->getPressure()) +
+                (viscosity/square(dx)) * (bb211->get_v_plus() - 2*bb111->get_v_plus() + bb011->get_v_plus()) +
+                (viscosity/square(dy)) * (bb121->get_v_plus() - 2*bb111->get_v_plus() + bb101->get_v_plus()) +
+                (viscosity/square(dz)) * (bb112->get_v_plus() - 2*bb111->get_v_plus() + bb110->get_v_plus()) );
+			bb111->set_new_v_plus(new_v_plus);
+		} 
+		else 
+		{
+			// if this cell is not a leaf, explore all children
+			for(int i = 0; i < 8; i++) todo.push_back(node->getChild(i));
+		}
+	}
+	todo.clear();
+	todo.push_back(oc);
+	// Compute new W
+	while (!todo.empty()) 
+	{
+		OCTree *node = todo.back();
+		todo.pop_back(); 
+		if (node->isLeaf()) {
+			//get_u_avg = 0.5*(get_u_plus(i-1,j,k)+get_u_plus(i,j,k)
+			//get_uv_plus = 0.5*(get_u_plus(i,j,k) + get_u_plus(i,j+1,k)) * 0.5*(get_v_plus(i,j,k) + get_v_plus(i+1,j,k));
+			Vec3f max = node->getCell()->getMax();
+			Vec3f min = node->getCell()->getMin();
+			BoundingBox * bb111 = node->getCell();															// i, j, k
+			BoundingBox * bb011 = oc->getCell(min.x() - 0.1, 0.5*(min.y()+max.y()), 0.5*(min.z()+max.z())); // i-1,j, k
+			BoundingBox * bb211 = oc->getCell(max.x() + 0.1, 0.5*(min.y()+max.y()), 0.5*(min.z()+max.z()));	// i+1,j, k
+			BoundingBox * bb101 = oc->getCell(0.5*(min.x()+max.x()), min.y() - 0.1, 0.5*(min.z()+max.z())); // i,j-1,k
+			BoundingBox * bb121 = oc->getCell(0.5*(min.x()+max.x()), max.y() + 0.1, 0.5*(min.z()+max.z()));	// i,j+1,k
+			BoundingBox * bb110 = oc->getCell(0.5*(min.x()+max.x()), 0.5*(min.y()+max.y()), min.z() - 0.1); // i,j,k-1
+			BoundingBox * bb112 = oc->getCell(0.5*(min.x()+max.x()), 0.5*(min.y()+max.y()), max.z() + 0.1);	// i,j,k+1
+
+			double new_w_plus = bb111->get_w_plus() + dt * 
+				((1/dx) * (0.5*(bb011->get_u_plus() + bb111->get_u_plus()) * 0.5*(bb011->get_w_plus() + bb111->get_w_plus())
+						 - 0.5*(bb111->get_u_plus() + bb211->get_u_plus()) * 0.5*(bb111->get_w_plus() + bb211->get_w_plus())) +
+                (1/dy) * ( 0.5*(bb101->get_v_plus() + bb111->get_v_plus()) * 0.5*(bb101->get_w_plus() + bb111->get_w_plus())
+						 - 0.5*(bb111->get_v_plus() + bb121->get_v_plus()) * 0.5*(bb111->get_w_plus() + bb121->get_w_plus())) + 
+                (1/dz) * (square(0.5*(bb111->get_w_plus() + bb110->get_w_plus())) - square(0.5*(bb111->get_w_plus() + bb112->get_w_plus()))) +
+                args->gravity.z() +
+                (1/dz) * (bb111->getPressure()-bb112->getPressure()) +
+                (viscosity/square(dx)) * (bb211->get_w_plus() - 2*bb111->get_w_plus() + bb011->get_w_plus()) +
+                (viscosity/square(dy)) * (bb121->get_w_plus() - 2*bb111->get_w_plus() + bb101->get_w_plus()) +
+                (viscosity/square(dz)) * (bb112->get_w_plus() - 2*bb111->get_w_plus() + bb110->get_w_plus()) );
+			bb111->set_new_w_plus(new_w_plus);
+		} 
+		else 
+		{
+			// if this cell is not a leaf, explore all children
+			for(int i = 0; i < 8; i++) todo.push_back(node->getChild(i));
+		}
+	}
+
   /*
   for (i = 0; i < nx-1; i++) {
     for (j = 0; j < ny; j++) {
@@ -618,6 +728,30 @@ void Smoke::MoveParticles() {
     }
   }
   */
+	double dt = args->timestep;
+	std::vector<OCTree*> todo;  
+	todo.push_back(oc);
+	while (!todo.empty()) 
+	{
+		OCTree *node = todo.back();
+		todo.pop_back(); 
+		if (node->isLeaf()) {
+			std::vector<SmokeParticle*> &particles = node->getParticles();
+			for (unsigned int iter = 0; iter < particles.size(); iter++) {
+				SmokeParticle *p = particles[iter];
+				Vec3f pos = p->getPosition();
+				Vec3f vel = getInterpolatedVelocity(pos);
+				Vec3f pos2 = pos + vel*dt;
+				// euler integration
+				p->setPosition(pos2);
+			}
+		} 
+		else 
+		{
+			// if this cell is not a leaf, explore all children
+			for(int i = 0; i < 8; i++) todo.push_back(node->getChild(i));
+		}
+	}
 }
 
 // ==============================================================
@@ -689,15 +823,46 @@ void Smoke::SetEmptySurfaceFull() {
 
 // ==============================================================
 
-Vec3f Smoke::getInterpolatedVelocity(const Vec3f &pos) const {
+Vec3f Smoke::getInterpolatedVelocity(const Vec3f &pos) const 
+{
+	BoundingBox * bb111 = getCell(pos.x(),pos.y(),pos.z());															// i, j, k
+	Vec3f max = bb111->getMax();
+	Vec3f min = bb111->getMin();
 
+	// 9 Cells under
+	BoundingBox * bb020 = oc->getCell(min.x() - 0.1, max.y() + 0.1, min.z() - 0.1);					// i-1,j+1,k-1
+	BoundingBox * bb120 = oc->getCell(0.5*(max.x()+min.x()), max.y() + 0.1, min.z() - 0.1);			// i  ,j+1,k-1
+	BoundingBox * bb220 = oc->getCell(max.x() + 0.1, max.y() + 0.1, min.z() - 0.1);					// i+1,j+1,k-1
 
-  // *********************************************************************  
-  // ASSIGNMENT:
-  //
-  // I've intentionally reverted to the "dumb" velocity interpolation.
-  // Do it right, as described in the papers.
-  // ********************************************************************
+	BoundingBox * bb010 = oc->getCell(min.x() - 0.1, 0.5*(max.y()+min.y()), min.z() - 0.1);			// i-1,j,k-1
+	BoundingBox * bb110 = oc->getCell(0.5*(max.x()+min.x()), 0.5*(max.y()+min.y()), min.z() - 0.1);	// i  ,j,k-1
+	BoundingBox * bb210 = oc->getCell(max.x() + 0.1, 0.5*(max.y()+min.y()), min.z() - 0.1);			// i+1,j,k-1
+
+	BoundingBox * bb000 = oc->getCell(min.x() - 0.1, min.y() - 0.1, min.z() - 0.1);					// i-1,j-1,k-1	
+	BoundingBox * bb100 = oc->getCell(0.5*(min.x()+max.x()), min.y() - 0.1, min.z() - 0.1);			// i  ,j-1,k-1
+	BoundingBox * bb200 = oc->getCell(max.x() + 0.1, min.y() - 0.1, min.z() - 0.1);					// i+1,j-1,k-1
+
+	// 8 Cells surrounding
+	BoundingBox * bb021 = oc->getCell(min.x() - 0.1, max.y() + 0.1, 0.5*(min.z()+max.z()));			// i-1,j+1,k
+	BoundingBox * bb121 = oc->getCell(0.5*(min.x()+max.x()), max.y() + 0.1, 0.5*(min.z()+max.z()));	// i  ,j+1,k
+	BoundingBox * bb221 = oc->getCell(max.x() + 0.1, max.y() + 0.1, 0.5*(min.z()+max.z()));			// i+1,j+1,k
+
+	BoundingBox * bb011 = oc->getCell(min.x() - 0.1, 0.5*(min.y()+max.y()), 0.5*(min.z()+max.z())); // i-1,j  ,k
+	//			  bb111																				// i  ,j  ,k
+	BoundingBox * bb211 = oc->getCell(max.x() + 0.1, 0.5*(min.y()+max.y()), 0.5*(min.z()+max.z()));	// i+1,j  ,k
+	
+	BoundingBox * bb001 = oc->getCell(min.x() - 0.1, min.y() - 0.1, 0.5*(min.z()+max.z()));			// i-1,j-1,k
+	BoundingBox * bb101 = oc->getCell(0.5*(min.x()+max.x()), min.y() - 0.1, 0.5*(min.z()+max.z())); // i  ,j-1,k
+	BoundingBox * bb201 = oc->getCell(max.x() + 0.1, min.y() - 0.1, 0.5*(min.z()+max.z()));			// i+1,j-1,k
+	
+	// 9 Cells above
+	BoundingBox * bb022 = oc->getCell(min.x() - 0.1, max.y() + 0.1, max.z() + 0.1);					// i-1,j+1,k+1
+	BoundingBox * bb122 = oc->getCell(0.5*(max.x() + min.x()), max.y() + 0.1, max.z() + 0.1);		// i  ,j+1,k+1
+	BoundingBox * bb222 = oc->getCell(max.x() + 0.1, max.y() + 0.1, max.z() + 0.1);					// i+1,j+1,k+1
+
+	BoundingBox * bb012 = oc->getCell(min.x() - 0.1, 0.5*(max.y()+min.y()), max.z() + 0.1);			// i-1,j  ,k+1
+	BoundingBox * bb112 = oc->getCell(0.5*(min.x()+max.x()), 0.5*(min.y()+max.y()), max.z() + 0.1);	// i  ,j  ,k+1
+	BoundingBox * bb212 = oc->getCell(max.x() + 0.1, 0.5*(min.y()+max.y()), max.z() + 0.1);			// i+1,j  ,k+1
 	
 	double u[8],v[8],w[8];
 	double au[8],av[8],aw[8];

@@ -3,7 +3,7 @@
 #include "ray.h"
 #include "hit.h"
 
-bool SmokeParticle:: intersect(const Ray &r, Hit &h)
+bool SmokeParticle::intersect(const Ray &r, Hit &h)
 {
 	  // plug the explicit ray equation into the implict sphere equation and solve
 		double a, b,c;

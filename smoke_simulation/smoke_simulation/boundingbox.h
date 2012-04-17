@@ -8,29 +8,11 @@
 #include "vectors.h"
 #include "utils.h"
 #include "vbo_structs.h"
+#include "smokeParticle.h"
+#include "material.h"
 
-// ====================================================================
-
-class SmokeParticle {
-public:
-	// CONSTRUCTORS
-	SmokeParticle () { position = Vec3f(0,0,0); temperature = 0; density = 0; radius = 30; }
-	SmokeParticle (Vec3f pos, double temp, double dens)	{ position = pos; temperature = temp; density = dens; radius = 10; }
-	// accessor
-	Vec3f getPosition() const { return position; }
-	double getTemperature() const { return temperature; }
-	double getRadius() const { return radius; }
-	double getDensity() const { return density; }
-	// modifer
-	void setPosition(Vec3f p) { position = p; }
-private:
-	// representation
-	Vec3f position;
-	double temperature;
-	double density;
-	double radius;
-};
-
+class SmokeParticle;
+class ArgParser;
 // ====================================================================
 
 enum CELL_STATUS { CELL_EMPTY, CELL_SURFACE, CELL_FULL };

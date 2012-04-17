@@ -12,30 +12,6 @@
 
 class ArgParser;
 class MarchingCubes;
-//woooooooooooooooooooooooooooooooooooooooo
-// ========================================================================
-// ========================================================================
-// data structure to store a segment
-
-class Segment {
-
-public:
-  // CONSTRUCTOR
-  Segment(const Ray &ray, double tstart, double tstop) {
-    // first clamp the segment to "reasonable" values 
-    // to make sure it is drawn correctly in OpenGL
-    if (tstart < -1000) tstart = -1000;
-    if (tstop  >  1000) tstop  =  1000;
-    a = ray.pointAtParameter(tstart);
-    b = ray.pointAtParameter(tstop); }
-  const Vec3f& getStart() const { return a; }
-  const Vec3f& getEnd() const { return b; }
-private:
-  // REPRESENTATION
-  Vec3f a;
-  Vec3f b;
-};
-
 
 // ========================================================================
 // ========================================================================
@@ -78,8 +54,7 @@ public:
   void setupVBOsR();
   void setupVelocity();
   void setupFaceVelocity();
-  void drawVBOs();
-  void setupVBOsR(); 
+  void drawVBOs(); 
   void cleanupVBOs();
 
   // ===============================

@@ -5,8 +5,8 @@
 #include "matrix.h"
 #include "raytracer.h"
 #include "mesh.h"
+#include "utils.h"
 
-//woooooooooooooooooooooooooooooooooooooooo
 // ========================================================
 // static variables of GLCanvas class
 
