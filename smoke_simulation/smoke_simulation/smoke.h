@@ -6,12 +6,36 @@
 #include "argparser.h"
 #include "boundingbox.h"
 #include "vectors.h"
-#include "cell.h"
 #include "vbo_structs.h"
 #include "octree.h"
+#include "ray.h"
 
 class ArgParser;
 class MarchingCubes;
+//woooooooooooooooooooooooooooooooooooooooo
+// ========================================================================
+// ========================================================================
+// data structure to store a segment
+
+class Segment {
+
+public:
+  // CONSTRUCTOR
+  Segment(const Ray &ray, double tstart, double tstop) {
+    // first clamp the segment to "reasonable" values 
+    // to make sure it is drawn correctly in OpenGL
+    if (tstart < -1000) tstart = -1000;
+    if (tstop  >  1000) tstop  =  1000;
+    a = ray.pointAtParameter(tstart);
+    b = ray.pointAtParameter(tstop); }
+  const Vec3f& getStart() const { return a; }
+  const Vec3f& getEnd() const { return b; }
+private:
+  // REPRESENTATION
+  Vec3f a;
+  Vec3f b;
+};
+
 
 // ========================================================================
 // ========================================================================
@@ -25,10 +49,11 @@ public:
   Smoke(ArgParser *_args);
   ~Smoke();
   void Load();
-
+   Vec3f background_color;
   void initializeVBOs(); 
   void setupVBOs(); 
   void drawVBOs();
+  void setupVBOsR(); 
   void cleanupVBOs();
 
   // ===============================
@@ -37,6 +62,33 @@ public:
   BoundingBox getBoundingBox() const {
     return BoundingBox(Vec3f(0,0,0),Vec3f(nx,ny,nz)); }
 
+   //=================================================================================
+  //Rendering
+   // most of the time the RayTree is NOT activated, so the segments are not updated
+  static void Activate() { Clear(); activated = 1; }
+  static void Deactivate() { activated = 0; }
+
+  // when activated, these function calls store the segments of the tree
+  static void AddMainSegment(const Ray &ray, double tstart, double tstop) {
+    if (!activated) return;
+    main_segments.push_back(Segment(ray,tstart,tstop));
+  }
+  static void AddShadowSegment(const Ray &ray, double tstart, double tstop) {
+    if (!activated) return;
+    shadow_segments.push_back(Segment(ray,tstart,tstop));
+  }
+  static void AddReflectedSegment(const Ray &ray, double tstart, double tstop) {
+    if (!activated) return;
+    reflected_segments.push_back(Segment(ray,tstart,tstop));
+  }
+  static void AddTransmittedSegment(const Ray &ray, double tstart, double tstop) {
+    if (!activated) return;
+    transmitted_segments.push_back(Segment(ray,tstart,tstop));
+  }
+
+    BoundingBox * grid;
+    std::vector<VBOPos> smoke_particlesHit;
+	GLuint smoke_particles_Hit_VBO;
 private:
 
   // ==============
@@ -116,7 +168,7 @@ private:
   int nx,ny,nz;     // number of grid cells in each dimension
   double dx,dy,dz;  // dimensions of each grid cell
   
-  BoundingBox * grid;
+
   //Cell *cells;      // NOTE: padded with extra cells on each side
 
   // simulation parameters
@@ -140,6 +192,36 @@ private:
   std::vector<VBOPosNormalColor> smoke_face_velocity_vis;
   std::vector<VBOPosNormalColor> smoke_pressure_vis;
   std::vector<VBOPosNormalColor> smoke_cell_type_vis;
+
+
+
+  //===============================================================================
+  //Rendering
+
+  // the quads from the .obj file that have non-zero emission value
+   // HELPER FUNCTIONS
+  static void Clear() {
+    main_segments.clear();
+    shadow_segments.clear();
+    reflected_segments.clear();
+    transmitted_segments.clear();
+  }
+  
+  // REPRESENTATION
+  static int activated;
+  static std::vector<Segment> main_segments;
+  static std::vector<Segment> shadow_segments;
+  static std::vector<Segment> reflected_segments;
+  static std::vector<Segment> transmitted_segments;
+
+  // VBO
+  static GLuint smoke_verts_VBO;
+  static GLuint smoke_edge_indices_VBO;
+  static std::vector<VBOPosColor4> smoke_verts; 
+  static std::vector<VBOIndexedEdge> smoke_edge_indices;
+
+  
+
 };
 
 

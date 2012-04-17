@@ -6,7 +6,7 @@
 #include "raytracer.h"
 #include "mesh.h"
 
-
+//woooooooooooooooooooooooooooooooooooooooo
 // ========================================================
 // static variables of GLCanvas class
 
@@ -47,10 +47,7 @@ void GLCanvas::initialize(ArgParser *_args, Mesh *_mesh) {
 
   Vec3f point_of_interest = Vec3f(0,0,0);
   Vec3f camera_position = Vec3f(0,0,5);
-<<<<<<< HEAD
-=======
-  
->>>>>>> 176d45d4ab6286a72532f53ba61e21840f485b62
+
   Vec3f up = Vec3f(0,1,0);
   camera = new PerspectiveCamera(camera_position, point_of_interest, up, 20 * M_PI/180.0);
 
@@ -345,7 +342,6 @@ void GLCanvas::keyboard(unsigned char key, int x, int y) {
     // reset system
     Load();
     glutPostRedisplay();
-<<<<<<< HEAD
     break; 
   case 'r': case'R':
 	   // animate raytracing of the scene
@@ -374,13 +370,13 @@ void GLCanvas::keyboard(unsigned char key, int x, int y) {
 	    glutPostRedisplay();
 		 break; 
 	}
-=======
+
     break;
   case 'o': case 'O':
 	  args->octree = !args->octree;
 	  glutPostRedisplay();
 	  break;
->>>>>>> 176d45d4ab6286a72532f53ba61e21840f485b62
+
   case '+': case '=':
     std::cout << "timestep doubled:  " << args->timestep << " -> ";
     args->timestep *= 2.0; 

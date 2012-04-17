@@ -13,6 +13,17 @@
 
 // ==============================================================
 // ==============================================================
+// Initialize the static variables
+int Smoke::activated = 0;  
+std::vector<Segment> Smoke::main_segments;
+std::vector<Segment> Smoke::shadow_segments;
+std::vector<Segment> Smoke::reflected_segments;
+std::vector<Segment> Smoke::transmitted_segments;
+
+GLuint Smoke::smoke_verts_VBO;
+GLuint Smoke::smoke_edge_indices_VBO;
+std::vector<VBOPosColor4> Smoke::smoke_verts; 
+std::vector<VBOIndexedEdge> Smoke::smoke_edge_indices;
 
 void Smoke::initializeVBOs() {
   glGenBuffers(1, &smoke_particles_VBO);
@@ -21,6 +32,13 @@ void Smoke::initializeVBOs() {
   glGenBuffers(1, &smoke_pressure_vis_VBO);
   glGenBuffers(1, &smoke_cell_type_vis_VBO);
   marchingCubes->initializeVBOs();
+
+   glGenBuffers(1, &smoke_particles_Hit_VBO);
+   // =====================================================================================
+  //Rendering
+  // =====================================================================================
+   glGenBuffers(1, &smoke_verts_VBO);
+  glGenBuffers(1, &smoke_edge_indices_VBO);
 }
 
 
@@ -32,7 +50,7 @@ void Smoke::setupVBOs() {
   smoke_face_velocity_vis.clear();
   smoke_pressure_vis.clear();
   smoke_cell_type_vis.clear();
-
+   smoke_particlesHit.clear();
   // =====================================================================================
   // setup the particles
   // =====================================================================================
@@ -283,10 +301,66 @@ void Smoke::setupVBOs() {
     }
   }
   marchingCubes->setupVBOs();
+  setupVBOsR();   //rendering VBOs
 }
 
 
+// =====================================================================================
+  //Rendering
+  // =====================================================================================
+ void Smoke::setupVBOsR()
+  {
+  
+	 smoke_verts.clear();
+	 smoke_edge_indices.clear();
 
+
+	 Vec4f main_color(0.7,0.7,0.7,0.7);
+	 Vec4f shadow_color(0.1,0.9,0.1,0.7);
+	 Vec4f reflected_color(0.9,0.1,0.1,0.7);
+	 Vec4f transmitted_color(0.1,0.1,0.9,0.7);
+
+	  // initialize the data
+	  unsigned int i;
+	  int count = 0;
+	  for (i = 0; i < main_segments.size(); i++) 
+	  {
+		smoke_verts.push_back(VBOPosColor4(main_segments[i].getStart(),main_color));
+		smoke_verts.push_back(VBOPosColor4(main_segments[i].getEnd(),main_color));
+		smoke_edge_indices.push_back(VBOIndexedEdge(count,count+1)); count+=2;
+	  }
+	  for (i = 0; i < shadow_segments.size(); i++) {
+		smoke_verts.push_back(VBOPosColor4(shadow_segments[i].getStart(),shadow_color));
+		smoke_verts.push_back(VBOPosColor4(shadow_segments[i].getEnd(),shadow_color));
+		smoke_edge_indices.push_back(VBOIndexedEdge(count,count+1)); count+=2;
+	  }
+	  for (i = 0; i < reflected_segments.size(); i++) 
+	  {
+		smoke_verts.push_back(VBOPosColor4(reflected_segments[i].getStart(),reflected_color));
+		smoke_verts.push_back(VBOPosColor4(reflected_segments[i].getEnd(),reflected_color));
+		smoke_edge_indices.push_back(VBOIndexedEdge(count,count+1)); count+=2;
+	  }
+	  for (i = 0; i < transmitted_segments.size(); i++) {
+		smoke_verts.push_back(VBOPosColor4(transmitted_segments[i].getStart(),transmitted_color));
+		smoke_verts.push_back(VBOPosColor4(transmitted_segments[i].getEnd(),transmitted_color));
+		smoke_edge_indices.push_back(VBOIndexedEdge(count,count+1)); count+=2;
+	  }
+
+	  assert (2*smoke_edge_indices.size() == smoke_verts.size());
+	  int num_edges = smoke_edge_indices.size();
+
+	   glDeleteBuffers(1, &smoke_verts_VBO);
+       glDeleteBuffers(1, &smoke_edge_indices_VBO);
+
+	  // copy the data to each VBO
+	  if (num_edges > 0) 
+	  {
+		glBindBuffer(GL_ARRAY_BUFFER,smoke_verts_VBO); 
+		glBufferData(GL_ARRAY_BUFFER,sizeof(VBOPosColor4) * num_edges * 2,&smoke_verts[0],GL_STATIC_DRAW); 
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,smoke_edge_indices_VBO); 
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER,sizeof(VBOIndexedEdge) * num_edges,&smoke_edge_indices[0], GL_STATIC_DRAW);
+	  } 
+}
 
 
 
@@ -304,6 +378,17 @@ void Smoke::drawVBOs() {
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VBOPos), 0);
     glDrawArrays(GL_POINTS, 0, smoke_particles.size());
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisableVertexAttribArray(0);
+
+	glColor3f(255,0,0);
+    glPointSize(5);
+    glBindBuffer(GL_ARRAY_BUFFER, smoke_particles_Hit_VBO);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(3, GL_FLOAT,sizeof(VBOPos), 0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VBOPos), 0);
+    glDrawArrays(GL_POINTS, 0, smoke_particlesHit.size());
     glDisableClientState(GL_VERTEX_ARRAY);
     glDisableVertexAttribArray(0);
   }
@@ -424,6 +509,31 @@ void Smoke::drawVBOs() {
   if (args->surface) {
     marchingCubes->drawVBOs();
   } 
+
+  // =====================================================================================
+  //Rendering
+  // =====================================================================================
+  int num_edges = smoke_edge_indices.size();
+  if (num_edges == 0) return;
+
+  // this allows you to see rays passing through objects
+  // turn off the depth test and blend with the current pixel color
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+
+  glDisable(GL_LIGHTING);
+  glLineWidth(2);
+  glBindBuffer(GL_ARRAY_BUFFER, smoke_verts_VBO);
+  glEnableClientState(GL_VERTEX_ARRAY);
+  glVertexPointer(3, GL_FLOAT, sizeof(VBOPosColor4), BUFFER_OFFSET(0));
+  glEnableClientState(GL_COLOR_ARRAY);
+  glColorPointer(4, GL_FLOAT, sizeof(VBOPosColor4), BUFFER_OFFSET(12));
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, smoke_edge_indices_VBO);
+  glDrawElements(GL_LINES, num_edges*2, GL_UNSIGNED_INT, BUFFER_OFFSET(0));
+  glDisableClientState(GL_COLOR_ARRAY);
+  glDisableClientState(GL_VERTEX_ARRAY);
+  glEnable(GL_DEPTH_TEST);
 }
 
 void Smoke::cleanupVBOs() { 
@@ -432,8 +542,13 @@ void Smoke::cleanupVBOs() {
   glDeleteBuffers(1, &smoke_face_velocity_vis_VBO);  
   glDeleteBuffers(1, &smoke_pressure_vis_VBO);
   glDeleteBuffers(1, &smoke_cell_type_vis_VBO);
+
+    glDeleteBuffers(1, &smoke_particles_Hit_VBO);
+ // glDeleteBuffers(1, &smoke_verts_VBO);
+ // glDeleteBuffers(1, &smoke_edge_indices_VBO);
 }
 
+//woooooooooooooooooooooooooooooooooooooooo
 // ==============================================================
 
 double Smoke::getIsovalue(int i, int j, int k) const {
