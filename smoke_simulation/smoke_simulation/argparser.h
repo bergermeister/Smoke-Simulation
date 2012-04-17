@@ -69,6 +69,7 @@ public:
 
     wireframe = false;
     bounding_box = true;
+	octree = false;
     cubes = false;
     pressure = false;
 
@@ -116,6 +117,7 @@ public:
   bool velocity;
   bool surface;
   bool bounding_box;
+  bool octree;
 
   // used by cloth
   bool force;

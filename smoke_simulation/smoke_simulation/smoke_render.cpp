@@ -36,21 +36,31 @@ void Smoke::setupVBOs() {
   // =====================================================================================
   // setup the particles
   // =====================================================================================
-	for (int x = 0; x < nx; x++)
+  std::vector<SmokeParticle*> &particles = oc->getParticles();
+  oc->CollectParticlesInBox(*grid, particles);
+  for(int i = 0; i < particles.size(); i++){
+	  SmokeParticle *p = particles[i];
+	  Vec3f v = p->getPosition();
+	  smoke_particles.push_back(VBOPos(v));
+  }
+
+  // =====================================================================================
+  // Visualize OCTree
+  // =====================================================================================
+	std::cout << "Visualize OCTree" << std::endl;
+	std::vector<OCTree*> todo;  
+	todo.push_back(oc);
+	while (!todo.empty()) 
 	{
-		for (int y = 0; y < ny; y++)
+		OCTree *node = todo.back();
+		todo.pop_back(); 
+		if (node->isLeaf()) {
+			node->setupVBOs();
+		} 
+		else 
 		{
-			for (int z = 0; z < nz; z++)
-			{
-				BoundingBox *bb = getCell(x,y,z);
-				std::vector<SmokeParticle*> &particles = bb->getParticles();
-				for (unsigned int iter = 0; iter < particles.size(); iter++)
-				{
-					SmokeParticle *p = particles[iter];
-					Vec3f v = p->getPosition();
-					smoke_particles.push_back(VBOPos(v));
-				}
-			}
+			// if this cell is not a leaf, explore all children
+			for(int i = 0; i < 8; i++) todo.push_back(node->getChild(i));
 		}
 	}
 
@@ -297,6 +307,31 @@ void Smoke::drawVBOs() {
     glDisableClientState(GL_VERTEX_ARRAY);
     glDisableVertexAttribArray(0);
   }
+
+  // =====================================================================================
+  // Visualize OCTree
+  // =====================================================================================
+	if (args->octree)
+	{
+		std::cout << "Visualize OCTree" << std::endl;
+		std::vector<OCTree*> todo;  
+		todo.push_back(oc);
+		while (!todo.empty()) 
+		{
+			OCTree *node = todo.back();
+			todo.pop_back(); 
+			if (node->isLeaf()) {
+				node->initializeVBOs();
+				node->setupVBOs();
+				node->drawVBOs();
+			} 
+			else 
+			{
+				// if this cell is not a leaf, explore all children
+				for(int i = 0; i < 8; i++) todo.push_back(node->getChild(i));
+			}
+		}
+	}
 
   // =====================================================================================
   // visualize the average cell velocity

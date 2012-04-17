@@ -186,7 +186,7 @@ void Smoke::GenerateParticles(const std::string &shape, const std::string &place
 					{
 						SmokeParticle *p = new SmokeParticle();
 						p->setPosition(pos);
-						std::cout << p->getPosition().x() << ',' << p->getPosition().y() << ',' << p->getPosition().z() << std::endl;
+						//std::cout << p->getPosition().x() << ',' << p->getPosition().y() << ',' << p->getPosition().z() << std::endl;
 						oc->AddParticle(p);
 					}
 				}
@@ -204,7 +204,7 @@ void Smoke::GenerateParticles(const std::string &shape, const std::string &place
 			{      
 				SmokeParticle *p = new SmokeParticle();
 				p->setPosition(pos);
-				std::cout << p->getPosition().x() << ',' << p->getPosition().y() << ',' << p->getPosition().z() << std::endl;
+				//std::cout << p->getPosition().x() << ',' << p->getPosition().y() << ',' << p->getPosition().z() << std::endl;
 				oc->AddParticle(p);
 			}
 		}
@@ -252,6 +252,30 @@ void Smoke::ComputeNewVelocities() {
 
   // using the formulas from Foster & Metaxas
   // NEED TO IMPLEMENT
+  /*
+	std::vector<OCTree*> todo;  
+	todo.push_back(oc);
+	while (!todo.empty()) 
+	{
+		OCTree *node = todo.back();
+		todo.pop_back(); 
+		if (node->isLeaf()) {
+			double new_u_plus = get_u_plus(i,j,k) + dt * 
+			((1/dx) * (square(get_u_avg(i,j,k)) - square(get_u_avg(i+1,j,k))) +
+			(1/dy) * (get_uv_plus(i,j-1,k) - get_uv_plus(i,j,k)) + 
+			(1/dz) * (get_uw_plus(i,j,k-1) - get_uw_plus(i,j,k)) +
+			args->gravity.x() +
+			(1/dx) * (getPressure(i,j,k)-getPressure(i+1,j,k)) +
+			(viscosity/square(dx)) * (get_u_plus(i+1,j  ,k  ) - 2*get_u_plus(i,j,k) + get_u_plus(i-1,j  ,k  )) +
+			(viscosity/square(dy)) * (get_u_plus(i  ,j+1,k  ) - 2*get_u_plus(i,j,k) + get_u_plus(i  ,j-1,k  )) +
+			(viscosity/square(dz)) * (get_u_plus(i  ,j  ,k+1) - 2*get_u_plus(i,j,k) + get_u_plus(i  ,j  ,k-1)) );
+		} 
+		else 
+		{
+			// if this cell is not a leaf, explore all children
+			for(int i = 0; i < 8; i++) todo.push_back(node->getChild(i));
+		}
+	}
   /*
   for (i = 0; i < nx-1; i++) {
     for (j = 0; j < ny; j++) {

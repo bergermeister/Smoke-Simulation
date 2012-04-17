@@ -19,7 +19,7 @@ class MarchingCubes;
 class Smoke {
 
 public:
-
+	OCTree *oc;
   // ========================
   // CONSTRUCTOR & DESTRUCTOR
   Smoke(ArgParser *_args);
@@ -115,7 +115,7 @@ private:
   // Smoke parameters
   int nx,ny,nz;     // number of grid cells in each dimension
   double dx,dy,dz;  // dimensions of each grid cell
-  OCTree *oc;
+  
   BoundingBox * grid;
   //Cell *cells;      // NOTE: padded with extra cells on each side
 
