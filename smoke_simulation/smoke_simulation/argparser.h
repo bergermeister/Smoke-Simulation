@@ -23,13 +23,23 @@ public:
 	  if (argv[i] == std::string("-smoke")){
 		  i++; assert(i < argc);
 		  smoke_file = argv[i];
-      } else if (argv[i] == std::string("-size")) {
+      } 
+	  else if (argv[i] == std::string("-mesh")){
+		  i++; assert(i < argc);
+		  mesh_file = argv[i];}
+	  else if (argv[i] == std::string("-size")) {
         i++; assert (i < argc); 
 		width = height = atoi(argv[i]);
       } else if (argv[i] == std::string("-timestep")) {
 		i++; assert (i < argc); 
 		timestep = atof(argv[i]);
         assert (timestep > 0);
+      } else if (!strcmp(argv[i],"-num_bounces")) {
+	i++; assert (i < argc); 
+	num_bounces = atoi(argv[i]);
+      } else if (!strcmp(argv[i],"-num_shadow_samples")) {
+	i++; assert (i < argc); 
+	num_shadow_samples = atoi(argv[i]);
       } else {
 		printf ("whoops error with command line argument %d: '%s'\n",i,argv[i]);
 		assert(0);
@@ -63,7 +73,13 @@ public:
     pressure = false;
 
     gravity = Vec3f(0,-9.8,0);
-
+	
+	// RAYTRACING PARAMETERS
+	 intersect_backfacing = false;
+	 raytracing_animation = false;
+	 num_bounces = 0;
+	 ambient_light = Vec3f(0.1,0.1,0.1);
+	 num_shadow_samples = 0;
     // uncomment for deterministic randomness
     // mtrand = MTRand(37);
     
@@ -74,15 +90,25 @@ public:
   // REPRESENTATION
   // all public! (no accessors)
 
-  std::string cloth_file;
-  std::string smoke_file;
+   // BASIC RENDERING PARAMETERS
+  char *input_file;
   int width;
   int height;
+
+  std::string mesh_file;
+  std::string smoke_file;
 
   // animation control
   double timestep;
   bool animate;
   Vec3f gravity;
+
+  // RAYTRACING PARAMETERS
+  bool raytracing_animation;
+  int num_bounces;
+  int num_shadow_samples;
+  Vec3f ambient_light;
+  bool intersect_backfacing;
 
   // display option toggles 
   // (used by both)

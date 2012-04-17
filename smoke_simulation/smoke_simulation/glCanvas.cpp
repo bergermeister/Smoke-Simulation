@@ -3,6 +3,9 @@
 #include "camera.h"
 #include "smoke.h"
 #include "matrix.h"
+#include "raytracer.h"
+#include "mesh.h"
+
 
 // ========================================================
 // static variables of GLCanvas class
@@ -11,6 +14,8 @@ ArgParser* GLCanvas::args = NULL;
 Camera* GLCanvas::camera = NULL;
 Smoke* GLCanvas::smoke = NULL;
 BoundingBox GLCanvas::bbox;
+RayTracer* GLCanvas::raytracer = NULL;
+Mesh* GLCanvas::mesh = NULL;
 
 int GLCanvas::mouseButton = 0;
 int GLCanvas::mouseX = 0;
@@ -21,6 +26,11 @@ bool GLCanvas::shiftPressed = false;
 bool GLCanvas::altPressed = false;
 
 
+// params for the raytracing animation
+int GLCanvas::raytracing_x;
+int GLCanvas::raytracing_y;
+int GLCanvas::raytracing_skip;
+
 // ========================================================
 // Initialize all appropriate OpenGL variables, set
 // callback functions, and start the main event loop.
@@ -28,14 +38,20 @@ bool GLCanvas::altPressed = false;
 // by calling 'exit(0)'
 // ========================================================
 
-void GLCanvas::initialize(ArgParser *_args) {
+void GLCanvas::initialize(ArgParser *_args, Mesh *_mesh) {
+ 
   args = _args;
   smoke = NULL;
+  raytracer = NULL;
+   mesh = _mesh;
 
-  Vec3f camera_position = Vec3f(0,0,5);
   Vec3f point_of_interest = Vec3f(0,0,0);
+  Vec3f camera_position = Vec3f(0,0,5);
   Vec3f up = Vec3f(0,1,0);
   camera = new PerspectiveCamera(camera_position, point_of_interest, up, 20 * M_PI/180.0);
+
+   // if not initialized, position a perspective camera and scale it so it fits in the window
+ // camera = new PerspectiveCamera();  
 
   // setup glut stuff
   glutInitWindowSize(args->width, args->height);
@@ -82,13 +98,26 @@ void GLCanvas::initialize(ArgParser *_args) {
   glutMainLoop();
 }
 
-
-
 void GLCanvas::Load() { 
   delete smoke;
   smoke = NULL;
   if(args->smoke_file != "")
-	  smoke = new Smoke(args);
+  { 
+	
+		smoke = new Smoke(args);
+		RayTracer *_raytracer = new RayTracer(smoke,args);
+		raytracer = _raytracer;
+		camera=NULL;
+		if(camera==NULL){
+			bbox.Set(smoke->getBoundingBox());
+			Vec3f point_of_interest;
+			bbox.getCenter(point_of_interest);
+			double max_dim = bbox.maxDim();
+			Vec3f camera_position = point_of_interest + Vec3f(0,0,5*max_dim);
+			Vec3f up = Vec3f(0,1,0);
+			camera = new PerspectiveCamera(camera_position, point_of_interest, up, 20 * M_PI/180.0);  
+		}
+  }
   if (smoke) smoke->setupVBOs();
 }
 
@@ -147,16 +176,16 @@ void GLCanvas::display(void) {
   //bbox.Set(Smoke->getBoundingBox()); 
   bbox.Set(smoke->getBoundingBox());
 
-  // center the volume in the window
-  Matrix m;
-  m.setToIdentity();
-  Vec3f center;
-  bbox.getCenter(center);
-  m *= Matrix::MakeScale(1/double(bbox.maxDim()));
-  m *= Matrix::MakeTranslation(-center); 
-  float matrix_data[16];
-  m.glGet(matrix_data);
-  glMultMatrixf(matrix_data);
+  //// center the volume in the window
+  //Matrix m;
+  //m.setToIdentity();
+  //Vec3f center;
+  //bbox.getCenter(center);
+  //m *= Matrix::MakeScale(1/double(bbox.maxDim()));
+  //m *= Matrix::MakeTranslation(-center); 
+  //float matrix_data[16];
+  //m.glGet(matrix_data);
+  //glMultMatrixf(matrix_data);
   
    if(smoke) smoke->drawVBOs();
 
@@ -184,6 +213,26 @@ void GLCanvas::reshape(int w, int h) {
   camera->glInit(args->width, args->height);
 }
 
+// ========================================================
+// trace a ray through pixel (i,j) of the image an return the color
+// ========================================================
+Vec3f GLCanvas::TraceRay(double i, double j) {
+  // compute and set the pixel color
+  int max_d = my_max(args->width,args->height);
+  Vec3f color;
+   double x = (i+0.5-args->width/2.0)/double(max_d)+0.5;
+   double y = (j+0.5-args->height/2.0)/double(max_d)+0.5;	
+   Hit hit;	
+   Ray r = camera->generateRay(x,y); 
+   smoke->AddMainSegment(r,0,hit.getT());
+   color += raytracer->TraceRay(r,hit,args->num_bounces);
+   
+   // add that ray for visualization
+   smoke->AddMainSegment(r,0,hit.getT());
+ 
+   // return the color
+  return color;
+}
 // ========================================================
 // Callback function for mouse click or release
 // ========================================================
@@ -236,7 +285,8 @@ void GLCanvas::motion(int x, int y) {
 // Callback function for keyboard events
 // ========================================================
 
-void GLCanvas::keyboard(unsigned char key, int /*x*/, int /*y*/) {
+void GLCanvas::keyboard(unsigned char key, int x, int y) {
+  args->raytracing_animation = false;
   switch (key) {
   case 'a': case 'A':
     // toggle continuous animation
@@ -287,11 +337,38 @@ void GLCanvas::keyboard(unsigned char key, int /*x*/, int /*y*/) {
     args->pressure = !args->pressure;
     glutPostRedisplay();
     break; 
-  case 'r':  case 'R': 
+  case 'x':  case 'X': 
     // reset system
     Load();
     glutPostRedisplay();
     break; 
+  case 'r': case'R':
+	   // animate raytracing of the scene
+    args->raytracing_animation = !args->raytracing_animation;
+    if (args->raytracing_animation) {
+      raytracing_skip = my_max(args->width,args->height) / 10;
+      if (raytracing_skip % 2 == 0) raytracing_skip++;
+      assert (raytracing_skip >= 1);
+      raytracing_x = raytracing_skip/2;
+      raytracing_y = raytracing_skip/2;
+      display(); // clear out any old rendering
+      printf ("raytracing animation started, press 'R' to stop\n");
+    } else
+      printf ("raytracing animation stopped, press 'R' to start\n");    
+    break;
+	case 't':  case 'T': {
+		// visualize the ray tree for the pixel at the current mouse position
+		int i = x;
+		int j = glutGet(GLUT_WINDOW_HEIGHT)-y;
+		smoke->Activate();
+		raytracing_skip = 1;
+		TraceRay(i,j);
+		smoke->Deactivate();
+		// redraw
+	    smoke->setupVBOsR();
+	    glutPostRedisplay();
+		 break; 
+	}
   case '+': case '=':
     std::cout << "timestep doubled:  " << args->timestep << " -> ";
     args->timestep *= 2.0; 
@@ -308,7 +385,7 @@ void GLCanvas::keyboard(unsigned char key, int /*x*/, int /*y*/) {
     glutPostRedisplay();
     break;
   case 'q':  case 'Q':
- 
+    delete GLCanvas::raytracer;
 	delete smoke;
 	smoke = NULL;
     delete camera;
@@ -330,6 +407,26 @@ void GLCanvas::idle() {
 	  if (smoke) smoke->Animate();
     }
     glutPostRedisplay();
+  }
+  if (args->raytracing_animation) {
+    // draw 100 pixels and then refresh the screen and handle any user input
+    glDisable(GL_LIGHTING);
+    glDrawBuffer(GL_FRONT);
+    glDisable(GL_DEPTH_TEST);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glPointSize(raytracing_skip);
+    glBegin(GL_POINTS);
+    for (int i = 0; i < 4; i++) {
+      if (!DrawPixel()) {
+	args->raytracing_animation = false;
+	break;
+      }
+    }
+    glEnd();
+    glFlush();
   }
 }
 
@@ -353,3 +450,41 @@ int HandleGLError(const std::string &message) {
 
 // ========================================================
 // ========================================================
+
+
+
+// Scan through the image from the lower left corner across each row
+// and then up to the top right.  Initially the image is sampled very
+// coarsely.  Increment the static variables that track the progress
+// through the scans
+int GLCanvas::DrawPixel() {
+  if (raytracing_x > args->width) {
+    raytracing_x = raytracing_skip/2;
+    raytracing_y += raytracing_skip;
+  }
+  if (raytracing_y > args->height) {
+    if (raytracing_skip == 1) return 0;
+    raytracing_skip = raytracing_skip / 2;
+    if (raytracing_skip % 2 == 0) raytracing_skip++;
+    assert (raytracing_skip >= 1);
+    raytracing_x = raytracing_skip/2;
+    raytracing_y = raytracing_skip/2;
+    glEnd();
+    glPointSize(raytracing_skip);
+    glBegin(GL_POINTS);
+  }
+
+  // compute the color and position of intersection
+
+  Vec3f color= TraceRay(raytracing_x, raytracing_y);
+  double r = linear_to_srgb(color.x());
+  double g = linear_to_srgb(color.y());
+  double b = linear_to_srgb(color.z());
+  glColor3f(r,g,b);
+   // glColor3f(1,0,0);
+  double x = 2 * (raytracing_x/double(args->width)) - 1;
+  double y = 2 * (raytracing_y/double(args->height)) - 1;
+  glVertex3f(x,y,-1);
+  raytracing_x += raytracing_skip;
+  return 1;
+}

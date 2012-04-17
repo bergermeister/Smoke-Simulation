@@ -26,11 +26,12 @@
 #endif
 
 #include "boundingbox.h"
-
 class ArgParser;
 class Camera;
 class Smoke;
-
+class RayTracer;
+class BoundingBox;
+class Mesh;
 // ====================================================================
 // NOTE:  All the methods and variables of this class are static
 // ====================================================================
@@ -42,7 +43,7 @@ public:
   // Set up the canvas and enter the rendering loop
   // Note that this function will not return but can be
   // terminated by calling 'exit(0)'
-  static void initialize(ArgParser *_args);
+  static void initialize(ArgParser *_args, Mesh *_mesh);
   static void Render();
 
 private:
@@ -51,9 +52,11 @@ private:
   static void Load();
 
   // various static variables
+  static Mesh *mesh;
   static ArgParser *args;
   static Camera *camera;
   static Smoke *smoke;
+  static RayTracer *raytracer;
   static BoundingBox bbox;
 
   // state of the mouse cursor
@@ -63,6 +66,9 @@ private:
   static bool shiftPressed;
   static bool controlPressed;
   static bool altPressed;
+  static int raytracing_x;
+  static int raytracing_y;
+  static int raytracing_skip;
 
   // Callback functions for mouse and keyboard events
   static void display(void);
@@ -71,6 +77,9 @@ private:
   static void motion(int x, int y);
   static void keyboard(unsigned char key, int x, int y);
   static void idle();
+
+  static int DrawPixel();
+   static Vec3f TraceRay(double i, double j);
 };
 
 // ====================================================================
