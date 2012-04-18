@@ -1,20 +1,21 @@
 #ifndef _BOUNDING_BOX_H_
 #define _BOUNDING_BOX_H_
 
-#include "glCanvas.h"
+//#include "glCanvas.h"
 #include <cassert>
 #include <vector>
 #include <algorithm>
 #include "vectors.h"
 #include "utils.h"
 #include "vbo_structs.h"
+#include "hash.h"
 #include "smokeParticle.h"
 #include "material.h"
+
 
 class SmokeParticle;
 class ArgParser;
 // ====================================================================
-
 enum CELL_STATUS { CELL_EMPTY, CELL_SURFACE, CELL_FULL };
 class BoundingBox {
 
@@ -148,6 +149,8 @@ public:
   void drawVBOs();
   void cleanupVBOs();
 
+
+ 
 private:
 
   // ==============
@@ -157,6 +160,8 @@ private:
   
   GLuint bb_verts_VBO;
   GLuint bb_edge_indices_VBO;
+   GLuint s_edge_indices_VBO;
+   std::vector<VBOPos>sphere_edgesVBO;
 
   double pressure;
   enum CELL_STATUS status;
@@ -166,6 +171,7 @@ private:
   double new_u_plus,new_v_plus,new_w_plus;
 
   std::vector<SmokeParticle*> particles;
+
 };
 
 // ====================================================================

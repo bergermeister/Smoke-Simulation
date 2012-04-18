@@ -1,8 +1,7 @@
 #include "glCanvas.h"
-#include "vbo_structs.h"
+//#include "vbo_structs.h"
 #include "boundingbox.h"
-#include "utils.h"
-
+#include "face.h"
 
 // ====================================================================
 // ====================================================================
@@ -10,6 +9,7 @@
 void BoundingBox::initializeVBOs() {
   glGenBuffers(1, &bb_verts_VBO);
   glGenBuffers(1, &bb_edge_indices_VBO);
+  glGenBuffers(1, &s_edge_indices_VBO);
 }
 
 void BoundingBox::setupVBOs() {
@@ -67,13 +67,21 @@ void BoundingBox::drawVBOs() {
   HandleGLError("draw VBOS c");
   glDisableClientState(GL_VERTEX_ARRAY);
   
+   if (sphere_edgesVBO.size() > 0) {
+    glDisable(GL_LIGHTING);
+    glBindBuffer(GL_ARRAY_BUFFER, s_edge_indices_VBO);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(3, GL_FLOAT, sizeof(VBOPos), BUFFER_OFFSET(0));
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, s_edge_indices_VBO);
+    glDrawArrays(GL_LINES,0,sphere_edgesVBO.size());
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glEnable(GL_LIGHTING);
+  }
 }
 
 void BoundingBox::cleanupVBOs() {
   glDeleteBuffers(1, &bb_verts_VBO);
   glDeleteBuffers(1, &bb_edge_indices_VBO);
+
 }
 
-
-// ====================================================================
-// ====================================================================
