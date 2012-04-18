@@ -2,12 +2,16 @@
 #define _UTILS_H
 
 #include <cassert>
-
+#include "vectors.h"
+#include "MersenneTwister.h"
 // ======================================================================
 
 #define square(x) ((x)*(x))
 // helper for VBOs
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
+// a single random number generate for reproduceable randomness
+extern MTRand GLOBAL_mtrand;
+#define EPSILON 0.0001
 
 #if defined(_WIN32) 
 // windows already has them defined...
@@ -69,6 +73,62 @@ inline double AreaOfTriangle(const Vec3f &a, const Vec3f &b, const Vec3f &c) {
   return AreaOfTriangle((a-b).Length(), (b-c).Length(), (c-a).Length());
 }
 
+
+#define SRGB_ALPHA 0.055
+
+inline double linear_to_srgb(double x) {
+  double answer;
+  if (x <= 0.0031308)
+    answer = 12.92*x;
+  else 
+    answer = (1+SRGB_ALPHA)*(pow(x,1/2.4)-SRGB_ALPHA);
+  return answer;
+}
+
+inline double srgb_to_linear(double x) {
+  double answer;
+  if (x <= 0.04045)
+    answer = x/12.92;
+  else 
+    answer = pow((x+SRGB_ALPHA)/(1+SRGB_ALPHA),2.4);
+  return answer;
+}
+
+// =========================================================================
+// utility functions 
+inline double DistanceBetweenTwoPoints(const Vec3f &p1, const Vec3f &p2) {
+  Vec3f v = p1-p2;
+  return v.Length();
+}
+
+
+// utility function to generate random numbers used for sampling
+inline Vec3f RandomUnitVector() {
+  Vec3f tmp;
+  while (true) {
+    tmp = Vec3f(2*GLOBAL_mtrand.rand()-1,  // random real in [-1,1]
+		2*GLOBAL_mtrand.rand()-1,  // random real in [-1,1]
+		2*GLOBAL_mtrand.rand()-1); // random real in [-1,1]
+    if (tmp.Length() < 1) break;
+  }
+  tmp.Normalize();
+  return tmp;
+}
+
+// compute the perfect mirror direction
+inline Vec3f MirrorDirection(const Vec3f &normal, const Vec3f &incoming) {
+  double dot = incoming.Dot3(normal);
+  Vec3f r = (incoming*-1.0f) + normal * (2 * dot);
+  return r*-1.0f;
+}
+
+// compute a random diffuse direction
+// (not the same as a uniform random direction on the hemisphere)
+inline Vec3f RandomDiffuseDirection(const Vec3f &normal) {
+  Vec3f answer = normal+RandomUnitVector();
+  answer.Normalize();
+  return answer;
+}
 // ======================================================================
 
 #endif

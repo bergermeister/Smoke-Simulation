@@ -23,6 +23,15 @@ struct VBOPosColor {
   float r, g, b;    // color
 };
 
+struct VBOPosColor4 {
+  VBOPosColor4() {}
+  VBOPosColor4(const Vec3f &p,const Vec4f &c) {
+    x = p.x(); y = p.y(); z = p.z();
+    r = c.r(); g = c.g(); b = c.b(); a = c.a();
+  }
+  float x, y, z;    // position
+  float r, g, b, a;    // color
+};
 struct VBOPosNormal {
   VBOPosNormal() {}
   VBOPosNormal(const Vec3f &p, const Vec3f &n) {
