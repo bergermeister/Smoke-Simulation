@@ -1,6 +1,7 @@
 #include "glCanvas.h"
 #include "camera.h"
 #include "matrix.h"
+#include <cassert>
 
 // ====================================================================
 // ====================================================================
@@ -127,6 +128,30 @@ void Camera::rotateCamera(double rx, double ry) {
   rotMat.Transform(camera_position);
 }
 
+// ====================================================================
+// ====================================================================
+// GENERATE RAY
+
+Ray OrthographicCamera::generateRay(double x, double y) {
+  Vec3f screenCenter = camera_position;
+  Vec3f xAxis = getHorizontal() * size; 
+  Vec3f yAxis = getScreenUp() * size; 
+  Vec3f lowerLeft = screenCenter - 0.5*xAxis - 0.5*yAxis;
+  Vec3f screenPoint = lowerLeft + x*xAxis + y*yAxis;
+  return Ray(screenPoint,getDirection());
+}
+
+Ray PerspectiveCamera::generateRay(double x, double y) {
+  Vec3f screenCenter = camera_position + getDirection();
+  double screenHeight = 2 * tan(angle/2.0);
+  Vec3f xAxis = getHorizontal() * screenHeight;
+  Vec3f yAxis = getScreenUp() * screenHeight;
+  Vec3f lowerLeft = screenCenter - 0.5*xAxis - 0.5*yAxis;
+  Vec3f screenPoint = lowerLeft + x*xAxis + y*yAxis;
+  Vec3f dir = screenPoint - camera_position;
+  dir.Normalize();
+  return Ray(camera_position,dir); 
+} 
 // ====================================================================
 // ====================================================================
 

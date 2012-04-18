@@ -44,9 +44,10 @@ class OCTree {
   OCTree* getChild(int i) const { assert (!isLeaf()); assert (child[i] != NULL); return child[i]; }
   
   // Smoke Particles
+  BoundingBox *getCell() { return bbox; };
   BoundingBox *getCell(double x, double y, double z);
   //std::vector<SmokeParticle*>& getParticles() const { return bbox.getParticles(); }
-  std::vector<SmokeParticle*>& getParticles() { return bbox->getParticles(); }
+  std::vector<SmokeParticle*> getParticles() { return bbox->getParticles(); }
   void CollectParticlesInBox(const BoundingBox &bb, std::vector<SmokeParticle*> &particles) ;
 
   // =========

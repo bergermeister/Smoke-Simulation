@@ -12,7 +12,7 @@
 
 class ArgParser;
 class MarchingCubes;
-//woooooooooooooooooooooooooooooooooooooooo
+
 // ========================================================================
 // ========================================================================
 // data structure to store a segment
@@ -36,7 +36,6 @@ private:
   Vec3f b;
 };
 
-
 // ========================================================================
 // ========================================================================
 
@@ -49,11 +48,13 @@ public:
   Smoke(ArgParser *_args);
   ~Smoke();
   void Load();
-   Vec3f background_color;
-  void initializeVBOs(); 
-  void setupVBOs(); 
-  void drawVBOs();
-  void setupVBOsR(); 
+  Vec3f background_color;
+  void initializeVBOs();
+  void setupVBOs();
+  void setupVBOsR();
+  void setupVelocity();
+  void setupFaceVelocity();
+  void drawVBOs(); 
   void cleanupVBOs();
 
   // ===============================
@@ -62,7 +63,6 @@ public:
   BoundingBox getBoundingBox() const {
     return BoundingBox(Vec3f(0,0,0),Vec3f(nx,ny,nz)); }
 
-   //=================================================================================
   //Rendering
    // most of the time the RayTree is NOT activated, so the segments are not updated
   static void Activate() { Clear(); activated = 1; }
@@ -85,7 +85,7 @@ public:
     if (!activated) return;
     transmitted_segments.push_back(Segment(ray,tstart,tstop));
   }
-
+  
     BoundingBox * grid;
     std::vector<VBOPos> smoke_particlesHit;
 	GLuint smoke_particles_Hit_VBO;
@@ -193,8 +193,6 @@ private:
   std::vector<VBOPosNormalColor> smoke_pressure_vis;
   std::vector<VBOPosNormalColor> smoke_cell_type_vis;
 
-
-
   //===============================================================================
   //Rendering
 
@@ -219,9 +217,6 @@ private:
   static GLuint smoke_edge_indices_VBO;
   static std::vector<VBOPosColor4> smoke_verts; 
   static std::vector<VBOIndexedEdge> smoke_edge_indices;
-
-  
-
 };
 
 

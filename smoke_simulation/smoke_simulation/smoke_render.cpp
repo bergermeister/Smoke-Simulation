@@ -62,139 +62,8 @@ void Smoke::setupVBOs() {
 	  smoke_particles.push_back(VBOPos(v));
   }
 
-  // =====================================================================================
-  // Visualize OCTree
-  // =====================================================================================
-	std::cout << "Visualize OCTree" << std::endl;
-	std::vector<OCTree*> todo;  
-	todo.push_back(oc);
-	while (!todo.empty()) 
-	{
-		OCTree *node = todo.back();
-		todo.pop_back(); 
-		if (node->isLeaf()) {
-			node->setupVBOs();
-		} 
-		else 
-		{
-			// if this cell is not a leaf, explore all children
-			for(int i = 0; i < 8; i++) todo.push_back(node->getChild(i));
-		}
-	}
-
-  // =====================================================================================
-  // visualize the velocity
-  // =====================================================================================
-  if (args->dense_velocity == 0) {
-    // one velocity vector per cell, at the centroid
-    for (int i = 0; i < nx; i++) {
-      for (int j = 0; j < ny; j++) {
-	for (int k = 0; k < nz; k++) {
-	  Vec3f cell_center((i+0.5)*dx,(j+0.5)*dy,(k+0.5)*dz);
-	  Vec3f direction(get_u_avg(i,j,k),get_v_avg(i,j,k),get_w_avg(i,j,k));
-	  Vec3f pt2 = cell_center+100*args->timestep*direction;
-	  smoke_velocity_vis.push_back(VBOPosColor(cell_center,Vec3f(1,0,0)));
-	 smoke_velocity_vis.push_back(VBOPosColor(pt2,Vec3f(1,1,1)));
-	}
-      }
-    }
-  } else if (args->dense_velocity == 1) {
-    double z = nz*dz / 2.0;
-    for (double x = 0; x <= (nx+0.01)*dx; x+=0.25*dx) {
-      for (double y = 0; y <= (ny+0.01)*dy; y+=0.25*dy) {
-	Vec3f vel = getInterpolatedVelocity(Vec3f(x,y,z));
-	Vec3f pt1(x,y,z);
-	Vec3f pt2(x+vel.x(),y+vel.y(),z+vel.z());
-	smoke_velocity_vis.push_back(VBOPosColor(pt1,Vec3f(1,0,0)));
-	smoke_velocity_vis.push_back(VBOPosColor(pt2,Vec3f(1,1,1)));
-      } 
-    }
-  } else if (args->dense_velocity == 2) {
-    double y = ny*dy / 2.0;
-    for (double x = 0; x <= (nx+0.01)*dx; x+=0.25*dx) {
-      for (double z = 0; z <= (nz+0.01)*dz; z+=0.25*dz) {
-	Vec3f vel = getInterpolatedVelocity(Vec3f(x,y,z));
-	Vec3f pt1(x,y,z);
-	Vec3f pt2(x+vel.x(),y+vel.y(),z+vel.z());
-	smoke_velocity_vis.push_back(VBOPosColor(pt1,Vec3f(1,0,0)));
-	smoke_velocity_vis.push_back(VBOPosColor(pt2,Vec3f(1,1,1)));
-      }
-    } 
-  } else if (args->dense_velocity == 3) {
-    double x = nx*dx / 2.0;
-    for (double y = 0; y <= (ny+0.01)*dy; y+=0.25*dy) {
-      for (double z = 0; z <= (nz+0.01)*dz; z+=0.25*dz) {
-	Vec3f vel = getInterpolatedVelocity(Vec3f(x,y,z));
-	Vec3f pt1(x,y,z);
-	Vec3f pt2(x+vel.x(),y+vel.y(),z+vel.z());
-	smoke_velocity_vis.push_back(VBOPosColor(pt1,Vec3f(1,0,0)));
-	smoke_velocity_vis.push_back(VBOPosColor(pt2,Vec3f(1,1,1)));
-      }
-    } 
-  }
-
-  // =====================================================================================
-  // visualize the face velocity
-  // render stubby triangles to visualize the u, v, and w velocities between cell faces
-  // =====================================================================================
-  for (int i = 0; i < nx; i++) {
-    for (int j = 0; j < ny; j++) {
-      for (int k = 0; k < nz; k++) {
-	double u = get_u_plus(i,j,k);
-	double v = get_v_plus(i,j,k);
-	double w = get_w_plus(i,j,k);
-	double x = i*dx;
-	double y = j*dy;
-	double z = k*dz;
-	double dt = args->timestep;
-	if (u < -10*dt) {
-	  Vec3f pts[5] = { Vec3f(x+dx+u,y+0.5*dy,z+0.5*dz),
-			   Vec3f(x+dx,y+0.55*dy,z+0.55*dz),
-			   Vec3f(x+dx,y+0.55*dy,z+0.45*dz),
-			   Vec3f(x+dx,y+0.45*dy,z+0.45*dz),
-			   Vec3f(x+dx,y+0.45*dy,z+0.55*dz) };
-	  setupConeVBO(pts,Vec3f(1,0,0),smoke_face_velocity_vis);	  
-	} else if (u > 10*dt) {
-	  Vec3f pts[5] = { Vec3f(x+dx+u,y+0.5*dy,z+0.5*dz),
-			   Vec3f(x+dx,y+0.45*dy,z+0.45*dz),
-			   Vec3f(x+dx,y+0.55*dy,z+0.45*dz),
-			   Vec3f(x+dx,y+0.55*dy,z+0.55*dz),
-			   Vec3f(x+dx,y+0.45*dy,z+0.55*dz) };
-	  setupConeVBO(pts,Vec3f(1,0,0),smoke_face_velocity_vis);	  
-	}
-	if (v < -10*dt) {
-	  Vec3f pts[5] = { Vec3f(x+0.5*dx,y+dy+v,z+0.5*dz),
-			   Vec3f(x+0.45*dx,y+dy,z+0.45*dz),
-			   Vec3f(x+0.55*dx,y+dy,z+0.45*dz),
-			   Vec3f(x+0.55*dx,y+dy,z+0.55*dz),
-			   Vec3f(x+0.45*dx,y+dy,z+0.55*dz) };
-	  setupConeVBO(pts,Vec3f(0,1,0),smoke_face_velocity_vis);	  
-	} else if (v > 10*dt) {
-	  Vec3f pts[5] = { Vec3f(x+0.5*dx,y+dy+v,z+0.5*dz),
-			   Vec3f(x+0.55*dx,y+dy,z+0.55*dz),
-			   Vec3f(x+0.55*dx,y+dy,z+0.45*dz),
-			   Vec3f(x+0.45*dx,y+dy,z+0.45*dz),
-			   Vec3f(x+0.45*dx,y+dy,z+0.55*dz) };
-	  setupConeVBO(pts,Vec3f(0,1,0),smoke_face_velocity_vis);	  
-	}
-	if (w < -10*dt) {
-	  Vec3f pts[5] = { Vec3f(x+0.5*dx,y+0.5*dy,z+dz+w),
-			   Vec3f(x+0.55*dx,y+0.55*dy,z+dz),
-			   Vec3f(x+0.55*dx,y+0.45*dy,z+dz),
-			   Vec3f(x+0.45*dx,y+0.45*dy,z+dz),
-			   Vec3f(x+0.45*dx,y+0.55*dy,z+dz) };
-	  setupConeVBO(pts,Vec3f(0,0,1),smoke_face_velocity_vis);	  
-	} else if (w > 10*dt) {
-	  Vec3f pts[5] = { Vec3f(x+0.5*dx,y+0.5*dy,z+dz+w),
-			   Vec3f(x+0.45*dx,y+0.45*dy,z+dz),
-			   Vec3f(x+0.55*dx,y+0.45*dy,z+dz),
-			   Vec3f(x+0.55*dx,y+0.55*dy,z+dz),
-			   Vec3f(x+0.45*dx,y+0.55*dy,z+dz) };
-	  setupConeVBO(pts,Vec3f(0,0,1),smoke_face_velocity_vis);	  
-	}
-      }
-    }
-  }
+  setupFaceVelocity();
+  setupVelocity();
 
   // =====================================================================================
   // visualize the cell pressure
@@ -279,8 +148,8 @@ void Smoke::setupVBOs() {
     glBufferData(GL_ARRAY_BUFFER,sizeof(VBOPosColor)*smoke_velocity_vis.size(),&smoke_velocity_vis[0],GL_STATIC_DRAW); 
   }
   if (smoke_face_velocity_vis.size() > 0) {
-    glBindBuffer(GL_ARRAY_BUFFER,smoke_face_velocity_vis_VBO); 
-    glBufferData(GL_ARRAY_BUFFER,sizeof(VBOPosNormalColor)*smoke_face_velocity_vis.size(),&smoke_face_velocity_vis[0],GL_STATIC_DRAW); 
+		glBindBuffer(GL_ARRAY_BUFFER,smoke_face_velocity_vis_VBO); 
+		glBufferData(GL_ARRAY_BUFFER,sizeof(VBOPosNormalColor)*smoke_face_velocity_vis.size(),&smoke_face_velocity_vis[0],GL_STATIC_DRAW); 
   }
   /*
   glBindBuffer(GL_ARRAY_BUFFER,smoke_pressure_vis_VBO); 
@@ -301,9 +170,247 @@ void Smoke::setupVBOs() {
     }
   }
   marchingCubes->setupVBOs();
+
   setupVBOsR();   //rendering VBOs
 }
 
+void Smoke::setupVelocity()
+{
+	// =====================================================================================
+  // visualize the velocity
+  // =====================================================================================
+	if (args->dense_velocity == 0) 
+	{
+		std::vector<OCTree*> todo;  
+		todo.push_back(oc);
+		while (!todo.empty()) 
+		{
+			OCTree *node = todo.back();
+			todo.pop_back(); 
+			if (node->isLeaf()) {
+				Vec3f max = node->getCell()->getMax();
+				Vec3f min = node->getCell()->getMin();
+				BoundingBox * bb111 = node->getCell();															// i, j, k
+				BoundingBox * bb011 = oc->getCell(min.x() - 0.1, 0.5*(min.y()+max.y()), 0.5*(min.z()+max.z())); // i-1,j, k
+				BoundingBox * bb211 = oc->getCell(max.x() + 0.1, 0.5*(min.y()+max.y()), 0.5*(min.z()+max.z()));	// i+1,j, k
+				BoundingBox * bb101 = oc->getCell(0.5*(min.x()+max.x()), min.y() - 0.1, 0.5*(min.z()+max.z())); // i,j-1,k
+				BoundingBox * bb121 = oc->getCell(0.5*(min.x()+max.x()), max.y() + 0.1, 0.5*(min.z()+max.z()));	// i,j+1,k
+				BoundingBox * bb110 = oc->getCell(0.5*(min.x()+max.x()), 0.5*(min.y()+max.y()), min.z() - 0.1); // i,j,k-1
+				BoundingBox * bb112 = oc->getCell(0.5*(min.x()+max.x()), 0.5*(min.y()+max.y()), max.z() + 0.1);	// i,j,k+1
+				
+				Vec3f cell_center = node->getCenter();
+				Vec3f direction(0.5*(bb111->get_u_plus() + bb011->get_u_plus()) - 0.5*(bb111->get_u_plus() + bb211->get_u_plus())
+							  , 0.5*(bb111->get_v_plus() + bb101->get_v_plus()) - 0.5*(bb111->get_v_plus() + bb121->get_v_plus())
+							  , 0.5*(bb111->get_w_plus() + bb110->get_w_plus()) - 0.5*(bb111->get_w_plus() + bb112->get_w_plus()));
+				Vec3f pt2 = cell_center+100*args->timestep*direction;
+				smoke_velocity_vis.push_back(VBOPosColor(cell_center,Vec3f(1,0,0)));
+				smoke_velocity_vis.push_back(VBOPosColor(pt2,Vec3f(1,1,1)));
+			} 
+			else 
+			{
+				// if this cell is not a leaf, explore both children
+				for(int i = 0; i < 8; i++) todo.push_back(node->getChild(i));
+			} 
+		}
+	// one velocity vector per cell, at the centroid
+		/*
+	for (int i = 0; i < nx; i++) {
+		for (int j = 0; j < ny; j++) {
+	for (int k = 0; k < nz; k++) {
+		Vec3f cell_center((i+0.5)*dx,(j+0.5)*dy,(k+0.5)*dz);
+		Vec3f direction(get_u_avg(i,j,k),get_v_avg(i,j,k),get_w_avg(i,j,k));
+		Vec3f pt2 = cell_center+100*args->timestep*direction;
+		smoke_velocity_vis.push_back(VBOPosColor(cell_center,Vec3f(1,0,0)));
+		smoke_velocity_vis.push_back(VBOPosColor(pt2,Vec3f(1,1,1)));
+	}
+		}
+	}
+	} else if (args->dense_velocity == 1) {
+	double z = nz*dz / 2.0;
+	for (double x = 0; x <= (nx+0.01)*dx; x+=0.25*dx) {
+		for (double y = 0; y <= (ny+0.01)*dy; y+=0.25*dy) {
+	Vec3f vel = getInterpolatedVelocity(Vec3f(x,y,z));
+	Vec3f pt1(x,y,z);
+	Vec3f pt2(x+vel.x(),y+vel.y(),z+vel.z());
+	smoke_velocity_vis.push_back(VBOPosColor(pt1,Vec3f(1,0,0)));
+	smoke_velocity_vis.push_back(VBOPosColor(pt2,Vec3f(1,1,1)));
+		} 
+	}
+	} else if (args->dense_velocity == 2) {
+	double y = ny*dy / 2.0;
+	for (double x = 0; x <= (nx+0.01)*dx; x+=0.25*dx) {
+		for (double z = 0; z <= (nz+0.01)*dz; z+=0.25*dz) {
+	Vec3f vel = getInterpolatedVelocity(Vec3f(x,y,z));
+	Vec3f pt1(x,y,z);
+	Vec3f pt2(x+vel.x(),y+vel.y(),z+vel.z());
+	smoke_velocity_vis.push_back(VBOPosColor(pt1,Vec3f(1,0,0)));
+	smoke_velocity_vis.push_back(VBOPosColor(pt2,Vec3f(1,1,1)));
+		}
+	} 
+	} else if (args->dense_velocity == 3) {
+	double x = nx*dx / 2.0;
+	for (double y = 0; y <= (ny+0.01)*dy; y+=0.25*dy) {
+		for (double z = 0; z <= (nz+0.01)*dz; z+=0.25*dz) {
+	Vec3f vel = getInterpolatedVelocity(Vec3f(x,y,z));
+	Vec3f pt1(x,y,z);
+	Vec3f pt2(x+vel.x(),y+vel.y(),z+vel.z());
+	smoke_velocity_vis.push_back(VBOPosColor(pt1,Vec3f(1,0,0)));
+	smoke_velocity_vis.push_back(VBOPosColor(pt2,Vec3f(1,1,1)));
+		}
+	}
+	*/
+	}
+}
+
+void Smoke::setupFaceVelocity()
+{
+	// =====================================================================================
+	// visualize the face velocity
+	// render stubby triangles to visualize the u, v, and w velocities between cell faces
+	// =====================================================================================
+
+	std::vector<OCTree*> todo;  
+	todo.push_back(oc);
+	while (!todo.empty()) 
+	{
+		OCTree *node = todo.back();
+		todo.pop_back(); 
+		if (node->isLeaf()) {
+			BoundingBox * cell = node->getCell();
+			double dx = cell->getMax().x() - cell->getMin().x();
+			double dy = cell->getMax().y() - cell->getMin().y();
+			double dz = cell->getMax().z() - cell->getMin().z();
+			double u = cell->get_u_plus();
+			double v = cell->get_v_plus();
+			double w = cell->get_w_plus();
+			double x = cell->getMin().x();
+			double y = cell->getMin().y();
+			double z = cell->getMin().z();
+			double dt = args->timestep;
+			if (floor(u) < -10*dt) 
+			{
+				Vec3f pts[5] = { Vec3f(x+dx+u,y+0.5*dy,z+0.5*dz),
+				Vec3f(x+dx,y+0.55*dy,z+0.55*dz),
+				Vec3f(x+dx,y+0.55*dy,z+0.45*dz),
+				Vec3f(x+dx,y+0.45*dy,z+0.45*dz),
+				Vec3f(x+dx,y+0.45*dy,z+0.55*dz) };
+				setupConeVBO(pts,Vec3f(1,0,0),smoke_face_velocity_vis);	  
+			} 
+			else if (floor(u) > 10*dt) 
+			{
+				Vec3f pts[5] = { Vec3f(x+dx+u,y+0.5*dy,z+0.5*dz),
+				Vec3f(x+dx,y+0.45*dy,z+0.45*dz),
+				Vec3f(x+dx,y+0.55*dy,z+0.45*dz),
+				Vec3f(x+dx,y+0.55*dy,z+0.55*dz),
+				Vec3f(x+dx,y+0.45*dy,z+0.55*dz) };
+				setupConeVBO(pts,Vec3f(1,0,0),smoke_face_velocity_vis);	  
+			}
+			if (floor(v) < -10*dt) 
+			{
+				Vec3f pts[5] = { Vec3f(x+0.5*dx,y+dy+v,z+0.5*dz),
+				Vec3f(x+0.45*dx,y+dy,z+0.45*dz),
+				Vec3f(x+0.55*dx,y+dy,z+0.45*dz),
+				Vec3f(x+0.55*dx,y+dy,z+0.55*dz),
+				Vec3f(x+0.45*dx,y+dy,z+0.55*dz) };
+				setupConeVBO(pts,Vec3f(0,1,0),smoke_face_velocity_vis);	  
+			} 
+			else if (floor(v) > 10*dt) 
+			{
+				Vec3f pts[5] = { Vec3f(x+0.5*dx,y+dy+v,z+0.5*dz),
+				Vec3f(x+0.55*dx,y+dy,z+0.55*dz),
+				Vec3f(x+0.55*dx,y+dy,z+0.45*dz),
+				Vec3f(x+0.45*dx,y+dy,z+0.45*dz),
+				Vec3f(x+0.45*dx,y+dy,z+0.55*dz) };
+				setupConeVBO(pts,Vec3f(0,1,0),smoke_face_velocity_vis);	  
+			}
+			if (floor(w) < -10*dt) 
+			{
+				Vec3f pts[5] = { Vec3f(x+0.5*dx,y+0.5*dy,z+dz+w),
+				Vec3f(x+0.55*dx,y+0.55*dy,z+dz),
+				Vec3f(x+0.55*dx,y+0.45*dy,z+dz),
+				Vec3f(x+0.45*dx,y+0.45*dy,z+dz),
+				Vec3f(x+0.45*dx,y+0.55*dy,z+dz) };
+				setupConeVBO(pts,Vec3f(0,0,1),smoke_face_velocity_vis);	  
+			} 
+			else if (floor(w) > 10*dt) 
+			{
+				Vec3f pts[5] = { Vec3f(x+0.5*dx,y+0.5*dy,z+dz+w),
+				Vec3f(x+0.45*dx,y+0.45*dy,z+dz),
+				Vec3f(x+0.55*dx,y+0.45*dy,z+dz),
+				Vec3f(x+0.55*dx,y+0.55*dy,z+dz),
+				Vec3f(x+0.45*dx,y+0.55*dy,z+dz) };
+				setupConeVBO(pts,Vec3f(0,0,1),smoke_face_velocity_vis);	  
+			}
+			
+		} 
+		else 
+		{
+			// if this cell is not a leaf, explore both children
+			for(int i = 0; i < 8; i++) todo.push_back(node->getChild(i));
+		} 
+		
+	}
+		/*
+  for (int i = 0; i < nx; i++) {
+    for (int j = 0; j < ny; j++) {
+      for (int k = 0; k < nz; k++) {
+	double u = get_u_plus(i,j,k);
+	double v = get_v_plus(i,j,k);
+	double w = get_w_plus(i,j,k);
+	double x = i*dx;
+	double y = j*dy;
+	double z = k*dz;
+	double dt = args->timestep;
+	if (u < -10*dt) {
+	  Vec3f pts[5] = { Vec3f(x+dx+u,y+0.5*dy,z+0.5*dz),
+			   Vec3f(x+dx,y+0.55*dy,z+0.55*dz),
+			   Vec3f(x+dx,y+0.55*dy,z+0.45*dz),
+			   Vec3f(x+dx,y+0.45*dy,z+0.45*dz),
+			   Vec3f(x+dx,y+0.45*dy,z+0.55*dz) };
+	  setupConeVBO(pts,Vec3f(1,0,0),smoke_face_velocity_vis);	  
+	} else if (u > 10*dt) {
+	  Vec3f pts[5] = { Vec3f(x+dx+u,y+0.5*dy,z+0.5*dz),
+			   Vec3f(x+dx,y+0.45*dy,z+0.45*dz),
+			   Vec3f(x+dx,y+0.55*dy,z+0.45*dz),
+			   Vec3f(x+dx,y+0.55*dy,z+0.55*dz),
+			   Vec3f(x+dx,y+0.45*dy,z+0.55*dz) };
+	  setupConeVBO(pts,Vec3f(1,0,0),smoke_face_velocity_vis);	  
+	}
+	if (v < -10*dt) {
+	  Vec3f pts[5] = { Vec3f(x+0.5*dx,y+dy+v,z+0.5*dz),
+			   Vec3f(x+0.45*dx,y+dy,z+0.45*dz),
+			   Vec3f(x+0.55*dx,y+dy,z+0.45*dz),
+			   Vec3f(x+0.55*dx,y+dy,z+0.55*dz),
+			   Vec3f(x+0.45*dx,y+dy,z+0.55*dz) };
+	  setupConeVBO(pts,Vec3f(0,1,0),smoke_face_velocity_vis);	  
+	} else if (v > 10*dt) {
+	  Vec3f pts[5] = { Vec3f(x+0.5*dx,y+dy+v,z+0.5*dz),
+			   Vec3f(x+0.55*dx,y+dy,z+0.55*dz),
+			   Vec3f(x+0.55*dx,y+dy,z+0.45*dz),
+			   Vec3f(x+0.45*dx,y+dy,z+0.45*dz),
+			   Vec3f(x+0.45*dx,y+dy,z+0.55*dz) };
+	  setupConeVBO(pts,Vec3f(0,1,0),smoke_face_velocity_vis);	  
+	}
+	if (w < -10*dt) {
+	  Vec3f pts[5] = { Vec3f(x+0.5*dx,y+0.5*dy,z+dz+w),
+			   Vec3f(x+0.55*dx,y+0.55*dy,z+dz),
+			   Vec3f(x+0.55*dx,y+0.45*dy,z+dz),
+			   Vec3f(x+0.45*dx,y+0.45*dy,z+dz),
+			   Vec3f(x+0.45*dx,y+0.55*dy,z+dz) };
+	  setupConeVBO(pts,Vec3f(0,0,1),smoke_face_velocity_vis);	  
+	} else if (w > 10*dt) {
+	  Vec3f pts[5] = { Vec3f(x+0.5*dx,y+0.5*dy,z+dz+w),
+			   Vec3f(x+0.45*dx,y+0.45*dy,z+dz),
+			   Vec3f(x+0.55*dx,y+0.45*dy,z+dz),
+			   Vec3f(x+0.55*dx,y+0.55*dy,z+dz),
+			   Vec3f(x+0.45*dx,y+0.55*dy,z+dz) };
+	  setupConeVBO(pts,Vec3f(0,0,1),smoke_face_velocity_vis);	  
+	}
+      }
+    }
+  }
+  */
+}
 
 // =====================================================================================
   //Rendering
@@ -362,8 +469,6 @@ void Smoke::setupVBOs() {
 	  } 
 }
 
-
-
 void Smoke::drawVBOs() {
 
   // =====================================================================================
@@ -398,7 +503,6 @@ void Smoke::drawVBOs() {
   // =====================================================================================
 	if (args->octree)
 	{
-		std::cout << "Visualize OCTree" << std::endl;
 		std::vector<OCTree*> todo;  
 		todo.push_back(oc);
 		while (!todo.empty()) 
@@ -542,13 +646,11 @@ void Smoke::cleanupVBOs() {
   glDeleteBuffers(1, &smoke_face_velocity_vis_VBO);  
   glDeleteBuffers(1, &smoke_pressure_vis_VBO);
   glDeleteBuffers(1, &smoke_cell_type_vis_VBO);
-
-    glDeleteBuffers(1, &smoke_particles_Hit_VBO);
+  glDeleteBuffers(1, &smoke_particles_Hit_VBO);
  // glDeleteBuffers(1, &smoke_verts_VBO);
  // glDeleteBuffers(1, &smoke_edge_indices_VBO);
 }
 
-//woooooooooooooooooooooooooooooooooooooooo
 // ==============================================================
 
 double Smoke::getIsovalue(int i, int j, int k) const {

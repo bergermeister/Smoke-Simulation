@@ -151,7 +151,7 @@ void Fluid::GenerateParticles(const std::string &shape, const std::string &place
           Vec3f pos = Vec3f(x,y,z);
           if (inShape(pos,shape)) {
             Cell *cell = getCell(int(x/dx),int(y/dy),int(z/dz));
-            SmokeParticle *p = new SmokeParticle();
+            FluidParticle *p = new FluidParticle();
             p->setPosition(pos);
             cell->addParticle(p);
           }
@@ -167,7 +167,7 @@ void Fluid::GenerateParticles(const std::string &shape, const std::string &place
                         args->mtrand.rand()*nz*dz);
       if (inShape(pos,shape)) {      
         Cell *cell = getCell(int(pos.x()/dx),int(pos.y()/dy),int(pos.z()/dz));
-        SmokeParticle *p = new SmokeParticle();
+        FluidParticle *p = new FluidParticle();
         p->setPosition(pos);
         cell->addParticle(p);
       }
@@ -480,9 +480,9 @@ void Fluid::MoveParticles() {
     for (int j = 0; j < ny; j++) {
       for (int k = 0; k < nz; k++) {
         Cell *cell = getCell(i,j,k);
-	std::vector<SmokeParticle*> &particles = cell->getParticles();
+	std::vector<FluidParticle*> &particles = cell->getParticles();
         for (unsigned int iter = 0; iter < particles.size(); iter++) {
-          SmokeParticle *p = particles[iter];
+          FluidParticle *p = particles[iter];
           Vec3f pos = p->getPosition();
           Vec3f vel = getInterpolatedVelocity(pos);
           Vec3f pos2 = pos + vel*dt;
@@ -501,9 +501,9 @@ void Fluid::ReassignParticles() {
     for (int j = 0; j < ny; j++) {
       for (int k = 0; k < nz; k++) {
         Cell *cell = getCell(i,j,k);
-	std::vector<SmokeParticle*> &particles = cell->getParticles();
+	std::vector<FluidParticle*> &particles = cell->getParticles();
         for (unsigned int iter = 0; iter < particles.size(); iter++) {
-          SmokeParticle *p = particles[iter];
+          FluidParticle *p = particles[iter];
           Vec3f pos = p->getPosition();
           int i2 = (int)my_min(double(nx-1),my_max(0.0,floor(pos.x()/dx)));
           int j2 = (int)my_min(double(ny-1),my_max(0.0,floor(pos.y()/dy)));
