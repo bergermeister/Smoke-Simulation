@@ -41,10 +41,15 @@ class OCTree {
 	  for(int i = 0; i < 8; i++)
 		if (child[i]!=NULL) return false;
     return true; }
+  bool isParentLeaf() const {
+	  for(int i = 0; i < 8; i++) if (!child[i]->isLeaf()) return false;
+	  return true;
+  }
   OCTree* getChild(int i) const { assert (!isLeaf()); assert (child[i] != NULL); return child[i]; }
   
   // Smoke Particles
   BoundingBox *getCell() { return bbox; };
+  BoundingBox *getCell(Vec3f v);
   BoundingBox *getCell(double x, double y, double z);
   //std::vector<SmokeParticle*>& getParticles() const { return bbox.getParticles(); }
   std::vector<SmokeParticle*> getParticles() { return bbox->getParticles(); }
@@ -53,7 +58,10 @@ class OCTree {
   // =========
   // MODIFIERS
   void AddParticle(const SmokeParticle* p);
-  bool ParticleInCell(const SmokeParticle* &p);
+  void RemoveParticle(const SmokeParticle* p);
+  bool ParticleInCell(const SmokeParticle* p);
+  void mergeChildren();
+  void cleanupTree();
 
   void initializeVBOs() {bbox->initializeVBOs();}
   void setupVBOs() {bbox->setupVBOs();}
