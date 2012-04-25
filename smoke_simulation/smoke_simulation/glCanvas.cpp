@@ -4,7 +4,7 @@
 #include "smoke.h"
 #include "matrix.h"
 #include "raytracer.h"
-
+#include "face.h"
 #include "mesh.h"
 #include "utils.h"
 
@@ -292,7 +292,7 @@ void GLCanvas::motion(int x, int y) {
 // ========================================================
 
 void GLCanvas::keyboard(unsigned char key, int x, int y) {
-  args->raytracing_animation = false;
+  //args->raytracing_animation = false;
   switch (key) {
   case 'a': case 'A':
     // toggle continuous animation
@@ -431,6 +431,19 @@ void GLCanvas::idle() {
     glutPostRedisplay();
   }
   if (args->raytracing_animation) {
+
+	  // add contributions from each light that is not in shadow
+	int num_lights = mesh->getLights().size();
+	float b =.4; //scattering coefficient
+	float a = .2; //absorption coefficient
+	float c = b+a;
+	for (int i = 0; i < num_lights; i++) 
+	{
+		Face *f = mesh->getLights()[i];
+		Vec3f lightColor = f->getMaterial()->getEmittedColor() * f->getArea();
+		Vec3f lightCentroid = f->computeCentroid();
+		smoke->oc->calculateTransmittanceOfBB(lightCentroid,c,lightColor);
+	}
     // draw 100 pixels and then refresh the screen and handle any user input
     glDisable(GL_LIGHTING);
     glDrawBuffer(GL_FRONT);
@@ -441,7 +454,7 @@ void GLCanvas::idle() {
     glLoadIdentity();
     glPointSize(raytracing_skip);
     glBegin(GL_POINTS);
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 100; i++) {
       if (!DrawPixel()) {
 	args->raytracing_animation = false;
 	break;
@@ -480,35 +493,37 @@ int HandleGLError(const std::string &message) {
 // coarsely.  Increment the static variables that track the progress
 // through the scans
 int GLCanvas::DrawPixel() {
-  if (raytracing_x > args->width) {
-    raytracing_x = raytracing_skip/2;
-    raytracing_y += raytracing_skip;
-  }
-  if (raytracing_y > args->height) {
-    if (raytracing_skip == 1) return 0;
-    raytracing_skip = raytracing_skip / 2;
-    if (raytracing_skip % 2 == 0) raytracing_skip++;
-    assert (raytracing_skip >= 1);
-    raytracing_x = raytracing_skip/2;
-    raytracing_y = raytracing_skip/2;
-    glEnd();
-    glPointSize(raytracing_skip);
-    glBegin(GL_POINTS);
-  }
 
-  // compute the color and position of intersection
-  Vec3f color =  TraceRay(raytracing_x, raytracing_y);
+	if (raytracing_x > args->width) {
+	raytracing_x = raytracing_skip/2;
+	raytracing_y += raytracing_skip;
+	}
+	if (raytracing_y > args->height) {
+	if (raytracing_skip == 1) return 0;
+	raytracing_skip = raytracing_skip / 2;
+	if (raytracing_skip % 2 == 0) raytracing_skip++;
+	assert (raytracing_skip >= 1);
+	raytracing_x = raytracing_skip/2;
+	raytracing_y = raytracing_skip/2;
+	glEnd();
+	glPointSize(raytracing_skip);
+	glBegin(GL_POINTS);
+	}
+
+	// compute the color and position of intersection
+	Vec3f color =  TraceRay(raytracing_x, raytracing_y);
 	double r = linear_to_srgb(color.x());
 	double g = linear_to_srgb(color.y());
 	double b = linear_to_srgb(color.z());
-	std::cout<<r<<" "<<g<<" "<<b<<std::endl;
+	//std::cout<<r<<" "<<g<<" "<<b<<std::endl;
 	glColor3f(r,g,b);
 	 
 	double x = 2 * (raytracing_x/double(args->width)) - 1;
 	double y = 2 * (raytracing_y/double(args->height)) - 1;
 	glVertex3f(x,y,-1);
   
-  raytracing_x += raytracing_skip;
+	raytracing_x += raytracing_skip;
 
-  return 1;
+	return 1;
+	
 }
