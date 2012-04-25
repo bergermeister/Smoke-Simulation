@@ -1,6 +1,6 @@
 #include "octree.h"
 
-#define EPSILON 0.0001
+#define EPSILON 0.0005
 #define MAX_DEPTH 10
 #define MAX_PARTICLES_BEFORE_SPLIT 50
 
@@ -412,3 +412,43 @@ void OCTree::SplitCell() {
 }
 
 // ==================================================================
+
+
+void OCTree::calculateTransmittanceOfBB(Vec3f xlight,float c,Vec3f lightColor)
+{
+	float T = 0;
+	Vec3f center;
+	if(isLeaf())
+	{
+		bbox->getCenter(center);
+		float distToLightCentroid = (xlight - center).Length();
+		Vec3f lightIntensity = lightColor / (M_PI*distToLightCentroid*distToLightCentroid);
+		
+		T = exp(-c*abs((center-xlight).Length()) );        //transmitted light source
+		bbox->setLi(T*lightIntensity);
+
+		return;
+	}
+	else
+	{
+		bbox->getCenter(center);
+		float distToLightCentroid = (xlight - center).Length();
+		Vec3f lightIntensity = lightColor / (M_PI*distToLightCentroid*distToLightCentroid);
+		
+		T = exp(-c*abs((center-xlight).Length()) );        //transmitted light source
+		bbox->setLi(T*lightIntensity);
+		for(int i = 0; i < 8; i++)
+		{
+			child[i]->getCell()->getCenter(center);
+			float distToLightCentroid = (xlight - center).Length();
+			Vec3f lightIntensity = lightColor / (M_PI*distToLightCentroid*distToLightCentroid);
+		
+			T = exp(-c*abs((center-xlight).Length()) );        //transmitted light source
+			child[i]->getCell()->setLi(T*lightIntensity);
+			
+			child[i]->calculateTransmittanceOfBB(xlight,c,lightColor);
+
+		}
+		return;
+	}
+}

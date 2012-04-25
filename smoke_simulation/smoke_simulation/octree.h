@@ -18,6 +18,7 @@ class OCTree {
   // ========================
   // CONSTRUCTOR & DESTRUCTOR
   OCTree(BoundingBox * &_bbox, int _depth) {
+	
     bbox = _bbox;
     depth = _depth;
     for(int i = 0; i < 8; i++){
@@ -35,16 +36,19 @@ class OCTree {
   const Vec3f& getMax() const { return bbox->getMax(); }
   const Vec3f& getCenter() const { return split_center; }
   bool overlaps(const BoundingBox &bb) const;
+
   // hierarchy
   int getDepth() const { return depth; }
   bool isLeaf() const { 
 	  for(int i = 0; i < 8; i++)
 		if (child[i]!=NULL) return false;
     return true; }
+
   bool isParentLeaf() const {
 	  for(int i = 0; i < 8; i++) if (!child[i]->isLeaf()) return false;
 	  return true;
   }
+  
   OCTree* getChild(int i) const { assert (!isLeaf()); assert (child[i] != NULL); return child[i]; }
   
   // Smoke Particles
@@ -66,6 +70,8 @@ class OCTree {
   void initializeVBOs() {bbox->initializeVBOs();}
   void setupVBOs() {bbox->setupVBOs();}
   void drawVBOs() {bbox->drawVBOs();}
+  void calculateTransmittanceOfBB(Vec3f xlight, float c,Vec3f lightColor);
+  
  private:
 
   // HELPER FUNCTION

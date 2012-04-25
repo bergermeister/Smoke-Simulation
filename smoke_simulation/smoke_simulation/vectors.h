@@ -126,6 +126,8 @@ public:
     Vec3f v3 = v1; v3.Scale(v2.x(),v2.y(),v2.z()); return v3; }
   friend Vec3f operator*(double d, const Vec3f &v1) {
     return v1 * d; }
+   friend Vec3f operator/(const Vec3f &v1, double d) {
+    Vec3f v2 = v1; v2.Scale(1/d); return v2; }
 
   // --------------
   // INPUT / OUTPUT

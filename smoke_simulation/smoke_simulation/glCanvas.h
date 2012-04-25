@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
+#include <map>
 #include <string>
 
 // Included files for OpenGL Rendering
@@ -32,6 +33,7 @@ class Smoke;
 class RayTracer;
 class BoundingBox;
 class Mesh;
+
 // ====================================================================
 // NOTE:  All the methods and variables of this class are static
 // ====================================================================
@@ -79,7 +81,7 @@ private:
   static void idle();
 
   static int DrawPixel();
-   static Vec3f TraceRay(double i, double j);
+  static Vec3f TraceRay(double i, double j);
 };
 
 // ====================================================================
