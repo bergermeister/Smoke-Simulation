@@ -5,6 +5,8 @@
 #include "vectors.h"
 #include "hash.h"
 #include "material.h"
+#include "argparser.h"
+#include "vbo_structs.h"
 
 class Vertex;
 class Edge;
@@ -29,12 +31,31 @@ class Mesh {
 
 public:
 
+ 
   // ===============================
   // CONSTRUCTOR & DESTRUCTOR & LOAD
-  Mesh() { bbox = NULL; }
+  Mesh() 
+  {
+	  num_faces = -1;  
+	  area = NULL;
+	  bbox = NULL; 
+  }
   virtual ~Mesh();
   void Load(const std::string &input_file, ArgParser *_args);
     
+   void initializeVBOs(); 
+  void setupVBOs(); 
+  void drawVBOs();
+  void cleanupVBOs();
+  double getArea(int i) const {
+    assert (i >= 0 && i < num_faces);
+    return area[i]; }
+  void setArea(int i, double value) {
+    assert (i >= 0 && i < num_faces);
+    area[i] = value; }
+   void Reset();
+  void Cleanup();
+
   // ========
   // VERTICES
   int numVertices() const { return vertices.size(); }
@@ -104,9 +125,30 @@ public:
   // ===============
   // OTHER FUNCTIONS
   void Subdivision();
-
+  
 private:
+	 Vec3f setupHelperForColor(Face *f, int i, int j);
 
+  // ==============
+  // REPRESENTATION
+  int num_faces;
+  RayTracer *raytracer;
+
+  // length n vectors
+  double *area;
+  double total_area;             // the total area of the scene
+
+  // VBOs
+  GLuint mesh_quad_verts_VBO;
+  GLuint mesh_quad_indices_VBO;
+  GLuint mesh_textured_quad_indices_VBO;
+  GLuint mesh_interior_edge_indices_VBO;
+  GLuint mesh_border_edge_indices_VBO;
+  std::vector<VBOPosNormalColorTexture> mesh_quad_verts; 
+  std::vector<VBOIndexedQuad> mesh_quad_indices;
+  std::vector<VBOIndexedQuad> mesh_textured_quad_indices;
+  std::vector<VBOIndexedEdge> mesh_interior_edge_indices;
+  std::vector<VBOIndexedEdge> mesh_border_edge_indices;
   // ==================================================
   // HELPER FUNCTIONS FOR CREATING/SUBDIVIDING GEOMETRY
   Vertex* AddEdgeVertex(Vertex *a, Vertex *b);

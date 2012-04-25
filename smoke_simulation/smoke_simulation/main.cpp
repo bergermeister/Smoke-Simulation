@@ -3,7 +3,7 @@
 #include <iostream> 
 #include "mesh.h"
 #include "argparser.h"
-
+#include "radiosity.h"
 // =========================================
 // =========================================
 

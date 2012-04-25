@@ -89,7 +89,7 @@ public:
   friend std::ostream& operator<<(std::ostream &ostr, const Matrix &m);
   friend std::istream& operator>>(std::istream &istr, Matrix &m);
 
-private:
+
 
   // ------------
   // DETERMINANTS

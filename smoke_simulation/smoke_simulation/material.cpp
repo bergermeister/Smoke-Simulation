@@ -2,7 +2,7 @@
 #include "utils.h"
 #include "ray.h"
 #include "hit.h"
-
+#include <math.h>
 // ==================================================================
 // DESTRUCTOR
 // ==================================================================
@@ -25,9 +25,7 @@ const Vec3f Material::getDiffuseColor(double s, double t) const {
 // a particular light source to the intersection point.  Note that
 // this function does not calculate any global effects (e.g., shadows). 
 
-Vec3f Material::Shade(const Ray &ray, const Hit &hit, 
-                      const Vec3f &dirToLight, 
-                      const Vec3f &lightColor, ArgParser *args) const {
+Vec3f Material::Shade(const Ray &ray, const Hit &hit, const Vec3f &dirToLight, const Vec3f &lightColor, ArgParser *args) const {
   
   Vec3f point = ray.pointAtParameter(hit.getT());
   Vec3f n = hit.getNormal();
@@ -62,4 +60,13 @@ Vec3f Material::Shade(const Ray &ray, const Hit &hit,
   return answer;
 }
 
-// ==================================================================
+float AlternateFog( float cosVal, float distToFrag )
+{
+	float fex = exp( -distToFrag*(0.15+0.15) );
+	float ins = (1-fex);
+	float brt = 3.0/(16.0*3.14159)*0.15*(1.0+cosVal*cosVal);
+	float bmt = 1.0/(4.0*3.14159)*0.15*(1.0-0.95)*(1.0-0.95)/(pow((1.0+0.95*0.95-2*0.95*cosVal),1.5) );
+	float lint = (brt+bmt)/(0.15+0.15)*ins;
+	return lint;
+}
+

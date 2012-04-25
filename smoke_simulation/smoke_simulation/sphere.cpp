@@ -84,61 +84,61 @@ Vec3f ComputeSpherePoint(double s, double t, const Vec3f center, double radius) 
 
 void Sphere::addRasterizedFaces(Mesh *m, ArgParser *args) {
   //
-  //// and convert it into quad patches for radiosity
-  //int h = args->sphere_horiz;
-  //int v = args->sphere_vert;
-  //assert (h % 2 == 0);
-  //int i,j;
-  //int va,vb,vc,vd;
-  //Vertex *a,*b,*c,*d;
-  //int offset = m->numVertices(); //vertices.size();
+  // and convert it into quad patches for radiosity
+  int h = args->sphere_horiz;
+  int v = args->sphere_vert;
+  assert (h % 2 == 0);
+  int i,j;
+  int va,vb,vc,vd;
+  Vertex *a,*b,*c,*d;
+  int offset = m->numVertices(); //vertices.size();
 
-  //// place vertices
-  //m->addVertex(center+radius*Vec3f(0,-1,0));  // bottom
-  //for (j = 1; j < v; j++) {  // middle
-  //  for (i = 0; i < h; i++) {
-  //    double s = i / double(h);
-  //    double t = j / double(v);
-  //    m->addVertex(ComputeSpherePoint(s,t,center,radius));
-  //  }
-  //}
-  //m->addVertex(center+radius*Vec3f(0,1,0));  // top
+  // place vertices
+  m->addVertex(center+radius*Vec3f(0,-1,0));  // bottom
+  for (j = 1; j < v; j++) {  // middle
+    for (i = 0; i < h; i++) {
+      double s = i / double(h);
+      double t = j / double(v);
+      m->addVertex(ComputeSpherePoint(s,t,center,radius));
+    }
+  }
+  m->addVertex(center+radius*Vec3f(0,1,0));  // top
 
-  //// the middle patches
-  //for (j = 1; j < v-1; j++) {
-  //  for (i = 0; i < h; i++) {
-  //    va = 1 +  i      + h*(j-1);
-  //    vb = 1 + (i+1)%h + h*(j-1);
-  //    vc = 1 +  i      + h*(j);
-  //    vd = 1 + (i+1)%h + h*(j);
-  //    a = m->getVertex(offset + va);
-  //    b = m->getVertex(offset + vb);
-  //    c = m->getVertex(offset + vc);
-  //    d = m->getVertex(offset + vd);
-  //    m->addRasterizedPrimitiveFace(a,b,d,c,material);
-  //  }
-  //}
+  // the middle patches
+  for (j = 1; j < v-1; j++) {
+    for (i = 0; i < h; i++) {
+      va = 1 +  i      + h*(j-1);
+      vb = 1 + (i+1)%h + h*(j-1);
+      vc = 1 +  i      + h*(j);
+      vd = 1 + (i+1)%h + h*(j);
+      a = m->getVertex(offset + va);
+      b = m->getVertex(offset + vb);
+      c = m->getVertex(offset + vc);
+      d = m->getVertex(offset + vd);
+      m->addRasterizedPrimitiveFace(a,b,d,c,material);
+    }
+  }
 
-  //for (i = 0; i < h; i+=2) {
-  //  // the bottom patches
-  //  va = 0;
-  //  vb = 1 +  i;
-  //  vc = 1 + (i+1)%h;
-  //  vd = 1 + (i+2)%h;
-  //  a = m->getVertex(offset + va);
-  //  b = m->getVertex(offset + vb);
-  //  c = m->getVertex(offset + vc);
-  //  d = m->getVertex(offset + vd);
-  //  m->addRasterizedPrimitiveFace(d,c,b,a,material);
-  //  // the top patches
-  //  va = 1 + h*(v-1);
-  //  vb = 1 +  i      + h*(v-2);
-  //  vc = 1 + (i+1)%h + h*(v-2);
-  //  vd = 1 + (i+2)%h + h*(v-2);
-  //  a = m->getVertex(offset + va);
-  //  b = m->getVertex(offset + vb);
-  //  c = m->getVertex(offset + vc);
-  //  d = m->getVertex(offset + vd);
-  //  m->addRasterizedPrimitiveFace(b,c,d,a,material);
-  //}
+  for (i = 0; i < h; i+=2) {
+    // the bottom patches
+    va = 0;
+    vb = 1 +  i;
+    vc = 1 + (i+1)%h;
+    vd = 1 + (i+2)%h;
+    a = m->getVertex(offset + va);
+    b = m->getVertex(offset + vb);
+    c = m->getVertex(offset + vc);
+    d = m->getVertex(offset + vd);
+    m->addRasterizedPrimitiveFace(d,c,b,a,material);
+    // the top patches
+    va = 1 + h*(v-1);
+    vb = 1 +  i      + h*(v-2);
+    vc = 1 + (i+1)%h + h*(v-2);
+    vd = 1 + (i+2)%h + h*(v-2);
+    a = m->getVertex(offset + va);
+    b = m->getVertex(offset + vb);
+    c = m->getVertex(offset + vc);
+    d = m->getVertex(offset + vd);
+    m->addRasterizedPrimitiveFace(b,c,d,a,material);
+  }
 }

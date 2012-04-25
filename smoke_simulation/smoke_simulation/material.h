@@ -20,7 +20,7 @@ public:
 
   Material(const Vec3f &d_color,const Vec3f &r_color, const Vec3f &e_color, double roughness_)
   {
-  
+    
     diffuseColor = d_color;   
     reflectiveColor = r_color;
     emittedColor = e_color;
@@ -41,10 +41,9 @@ public:
   // SHADE
   // compute the contribution to local illumination at this point for
   // a particular light source
-  Vec3f Shade
-  (const Ray &ray, const Hit &hit, const Vec3f &dirToLight, 
-   const Vec3f &lightColor, ArgParser *args) const;
+  Vec3f Shade(const Ray &ray, const Hit &hit, const Vec3f &dirToLight, const Vec3f &lightColor, ArgParser *args) const;
   
+ 
 protected:
 
   Material() { exit(0); }
@@ -57,7 +56,7 @@ protected:
   Vec3f reflectiveColor;
   Vec3f emittedColor;
   double roughness;
-
+  
 };
 
 // ====================================================================
