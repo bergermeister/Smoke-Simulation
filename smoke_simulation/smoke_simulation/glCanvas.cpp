@@ -4,6 +4,7 @@
 #include "smoke.h"
 #include "matrix.h"
 #include "raytracer.h"
+
 #include "mesh.h"
 #include "utils.h"
 
@@ -43,8 +44,7 @@ void GLCanvas::initialize(ArgParser *_args, Mesh *_mesh) {
   args = _args;
   smoke = NULL;
   raytracer = NULL;
-   mesh = _mesh;
-
+  mesh = _mesh;
   Vec3f point_of_interest = Vec3f(0,0,0);
   Vec3f camera_position = Vec3f(0,0,5);
 
@@ -94,7 +94,10 @@ void GLCanvas::initialize(ArgParser *_args, Mesh *_mesh) {
   bbox.initializeVBOs();
 
   HandleGLError("finished glcanvas initialize");
-
+  
+	mesh->initializeVBOs();
+	mesh->setupVBOs();
+    
   // Enter the main rendering loop
   glutMainLoop();
 }
@@ -106,8 +109,9 @@ void GLCanvas::Load() {
   { 
 	
 		smoke = new Smoke(args);
-		RayTracer *_raytracer = new RayTracer(smoke,args);
+		RayTracer *_raytracer = new RayTracer(smoke,args,mesh);
 		raytracer = _raytracer;
+	
 		camera=NULL;
 		if(camera==NULL){
 			bbox.Set(smoke->getBoundingBox());
@@ -187,14 +191,14 @@ void GLCanvas::display(void) {
   //float matrix_data[16];
   //m.glGet(matrix_data);
   //glMultMatrixf(matrix_data);
-  
-   if(smoke) smoke->drawVBOs();
-
+   mesh->drawVBOs();
+   
+  if(smoke) smoke->drawVBOs();
   if (args->bounding_box) {
     bbox.setupVBOs();
     bbox.drawVBOs();
   }
-
+  
   glutSwapBuffers();
   HandleGLError("end display");
 }
@@ -220,13 +224,14 @@ void GLCanvas::reshape(int w, int h) {
 Vec3f GLCanvas::TraceRay(double i, double j) {
   // compute and set the pixel color
   int max_d = my_max(args->width,args->height);
-  Vec3f color;
+
+   Vec3f color;
    double x = (i+0.5-args->width/2.0)/double(max_d)+0.5;
    double y = (j+0.5-args->height/2.0)/double(max_d)+0.5;	
    Hit hit;	
    Ray r = camera->generateRay(x,y); 
    smoke->AddMainSegment(r,0,hit.getT());
-   color += raytracer->TraceRay(r,hit,args->num_bounces);
+   color = raytracer->TraceRay(r,hit,args->num_bounces);
    
    // add that ray for visualization
    smoke->AddMainSegment(r,0,hit.getT());
@@ -305,10 +310,6 @@ void GLCanvas::keyboard(unsigned char key, int x, int y) {
     args->velocity = !args->velocity;
     glutPostRedisplay();
     break; 
-  case 'f':  case 'F': 
-    args->force = !args->force;
-    glutPostRedisplay();
-    break; 
   case 'e':  case 'E':   // "faces"/"edges"
     args->face_velocity = !args->face_velocity;
     glutPostRedisplay();
@@ -366,17 +367,27 @@ void GLCanvas::keyboard(unsigned char key, int x, int y) {
 		TraceRay(i,j);
 		smoke->Deactivate();
 		// redraw
+		mesh->setupVBOs();
 	    smoke->setupVBOsR();
+	
 	    glutPostRedisplay();
+
 		 break; 
 	}
 
     break;
+
   case 'o': case 'O':
 	  args->octree = !args->octree;
 	  glutPostRedisplay();
 	  break;
-
+ // RADIOSITY STUFF
+   case ' ': 
+    // a single step of radiosity
+    //raytracer->Iterate();
+    mesh->setupVBOs();
+    glutPostRedisplay();
+    break;
   case '+': case '=':
     std::cout << "timestep doubled:  " << args->timestep << " -> ";
     args->timestep *= 2.0; 
@@ -398,6 +409,8 @@ void GLCanvas::keyboard(unsigned char key, int x, int y) {
 	smoke = NULL;
     delete camera;
     camera = NULL;
+	 delete GLCanvas::raytracer;
+    delete GLCanvas::mesh;
     printf ("program exiting\n");
     exit(0);
     break;
@@ -414,6 +427,7 @@ void GLCanvas::idle() {
   
 	  if (smoke) smoke->Animate();
     }
+	mesh->setupVBOs();
     glutPostRedisplay();
   }
   if (args->raytracing_animation) {
@@ -483,16 +497,18 @@ int GLCanvas::DrawPixel() {
   }
 
   // compute the color and position of intersection
-
-  Vec3f color= TraceRay(raytracing_x, raytracing_y);
-  double r = linear_to_srgb(color.x());
-  double g = linear_to_srgb(color.y());
-  double b = linear_to_srgb(color.z());
-  glColor3f(r,g,b);
-   // glColor3f(1,0,0);
-  double x = 2 * (raytracing_x/double(args->width)) - 1;
-  double y = 2 * (raytracing_y/double(args->height)) - 1;
-  glVertex3f(x,y,-1);
+  Vec3f color =  TraceRay(raytracing_x, raytracing_y);
+	double r = linear_to_srgb(color.x());
+	double g = linear_to_srgb(color.y());
+	double b = linear_to_srgb(color.z());
+	std::cout<<r<<" "<<g<<" "<<b<<std::endl;
+	glColor3f(r,g,b);
+	 
+	double x = 2 * (raytracing_x/double(args->width)) - 1;
+	double y = 2 * (raytracing_y/double(args->height)) - 1;
+	glVertex3f(x,y,-1);
+  
   raytracing_x += raytracing_skip;
+
   return 1;
 }
