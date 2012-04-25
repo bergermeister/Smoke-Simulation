@@ -7,6 +7,10 @@
 #include "vectors.h"
 #include "MersenneTwister.h"
 
+#define NUM_RENDER_MODES 6
+enum RENDER_MODE { RENDER_MATERIALS, RENDER_RADIANCE, RENDER_FORM_FACTORS, 
+		   RENDER_LIGHTS, RENDER_UNDISTRIBUTED, RENDER_ABSORBED };
+
 // ================================================================================
 // ================================================================================
 
@@ -59,7 +63,6 @@ public:
 
     particles = true;
     velocity = true;
-    force = true;
 
     face_velocity = 0;
     dense_velocity = 0;
@@ -75,6 +78,12 @@ public:
 
     gravity = Vec3f(0,-9.8,0);
 	
+	 // RADIOSITY PARAMETERS
+    render_mode = RENDER_MATERIALS;
+    wireframe = false;
+    sphere_horiz = 8;
+    sphere_vert = 6;
+
 	// RAYTRACING PARAMETERS
 	 intersect_backfacing = false;
 	 raytracing_animation = false;
@@ -104,6 +113,12 @@ public:
   bool animate;
   Vec3f gravity;
 
+   // RADIOSITY PARAMETERS
+  enum RENDER_MODE render_mode;
+  bool wireframe;
+  int sphere_horiz;
+  int sphere_vert;
+
   // RAYTRACING PARAMETERS
   bool raytracing_animation;
   int num_bounces;
@@ -118,10 +133,6 @@ public:
   bool surface;
   bool bounding_box;
   bool octree;
-
-  // used by cloth
-  bool force;
-  bool wireframe;  
 
   // used by Smoke
   int face_velocity;

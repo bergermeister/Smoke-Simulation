@@ -34,6 +34,9 @@ public:
 	  new_u_plus = 0;
 	  new_v_plus = 0;
 	  new_w_plus = 0;
+
+	  formFactor = -1;
+	  radiance= Vec3f (-1,-1,-1);
   
   }
   BoundingBox(const Vec3f &v) { Set(v,v); }
@@ -149,9 +152,18 @@ public:
   void drawVBOs();
   void cleanupVBOs();
 
+  //RADIANCE
+  void setFormFactor(double value){ formFactor = value; }
+  double getFormFactor(){return formFactor;}
+  void setRadiance(Vec3f value) {radiance = value;}
+  Vec3f getRadiance(){return radiance;}
+  void setLi(Vec3f value) {Li= value;}
+  Vec3f getLi(){return Li;}
 
- 
 private:
+	double formFactor;
+    Vec3f radiance;
+	Vec3f Li;
 
   // ==============
   // REPRESENTATION

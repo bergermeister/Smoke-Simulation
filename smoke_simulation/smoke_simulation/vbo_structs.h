@@ -53,7 +53,20 @@ struct VBOPosNormalColor {
   float nx, ny, nz; // normal
   float r, g, b;    // color
 };
-
+struct VBOPosNormalColorTexture {
+  VBOPosNormalColorTexture() {}
+  VBOPosNormalColorTexture(const Vec3f &p, const Vec3f &n, const Vec3f &c, float s_, float t_) {
+    x = p.x(); y = p.y(); z = p.z();
+    nx = n.x(); ny = n.y(); nz = n.z();
+    r = c.x(); g = c.y(); b = c.z();
+    s = s_;
+    t = t_;
+  }
+  float x, y, z;    // position
+  float nx, ny, nz; // normal
+  float r, g, b;    // color
+  float s,t;
+};
 // ======================================================================
 
 struct VBOIndexedEdge {
