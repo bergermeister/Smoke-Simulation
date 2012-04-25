@@ -48,7 +48,7 @@ bool RayTracer::CastRay(const Ray &ray, Hit &h, bool use_rasterized_patches,Boun
 	std::vector<SmokeParticle *> pp = box->getParticles();
 	for(int i=0;i<pp.size();i++)
 	{
-		if(pp[i]->intersect(ray,h)) answer = true;
+		//if(pp[i]->intersect(ray,h)) answer = true;
 	}
   
   return answer;
@@ -162,9 +162,7 @@ Vec3f RayTracer::Trace(const Ray &ray, Hit &h, BoundingBox *box,BoundingBox *gri
 				mBox = smoke->oc->getCell(from.x(),from.y(),from.z());
 				pp = mBox->getParticles();
 				color +=Vec3f(srgb_to_linear(mesh->background_color.r()),srgb_to_linear(mesh->background_color.g()),srgb_to_linear(mesh->background_color.b()));
-				
-				
-				std::cout<<"no"<<std::endl;
+
 			}
 			if(!ParticleInGrid(from,grid))
 				out = true;
@@ -192,17 +190,7 @@ bool RayTracer::ParticleInGrid(const Vec3f position,const BoundingBox *b) const
 // does the recursive (shadow rays & recursive rays) work
  Vec3f RayTracer::TraceRay(Ray &ray1, Hit &hit, int bounce_count) const {
  		
-	// add contributions from each light that is not in shadow
-	int num_lights = mesh->getLights().size();
-    Vec3f color = Vec3f(0,0,0);
-	for (int i = 0; i < num_lights; i++) 
-	{
-		Face *f = mesh->getLights()[i];
-		Vec3f lightColor = f->getMaterial()->getEmittedColor() * f->getArea();
-		Vec3f lightCentroid = f->computeCentroid();
-		smoke->oc->calculateTransmittanceOfBB(lightCentroid,c,lightColor);
-	}
-
+	Vec3f color = Vec3f(0,0,0);
 	smoke->hitParticles.clear();
 	Vec3f from = ray1.getOrigin();
 	Vec3f n = ray1.getDirection();
@@ -216,6 +204,7 @@ bool RayTracer::ParticleInGrid(const Vec3f position,const BoundingBox *b) const
 	for(int i=0;i<25;i++)
 		from += n;
 	// First cast a ray and see if we hit anything.
+	 bool found = true;
 	n.set(n.x()/20,n.y()/20,n.z()/20);
 	do
 	{
@@ -226,8 +215,8 @@ bool RayTracer::ParticleInGrid(const Vec3f position,const BoundingBox *b) const
 		smoke->hitParticles.push_back(from);
 		if(count ==500)
 		{
-			std::cout<<"no11"<<std::endl;
-			return Vec3f(srgb_to_linear(mesh->background_color.r()),srgb_to_linear(mesh->background_color.g()),srgb_to_linear(mesh->background_color.b()));
+			found = false;
+			break;
 		}
 	}while(!in);
 
@@ -237,15 +226,129 @@ bool RayTracer::ParticleInGrid(const Vec3f position,const BoundingBox *b) const
 	Ray ray = Ray(from,n);
 	
 	//Ray marching	
-	color = Trace(ray,hit,box,grid);
-	if (!answer) 
+	if(found)
+		color = Trace(ray,hit,box,grid);
+	hit = Hit();
+	bool intersect = CastRay(ray1,hit,false,box);
+	if (!answer && !intersect) 
 	{
 		return Vec3f(srgb_to_linear(mesh->background_color.r()),srgb_to_linear(mesh->background_color.g()),srgb_to_linear(mesh->background_color.b()));
 	}
 	Density = abs(particles.size()/Volume);
-
 	color /=Density;
-	return color; 
+	
+	if (intersect)
+	{
+		// otherwise decide what to do based on the material
+		  Material *m = hit.getMaterial();
+		  assert (m != NULL);
+
+		  // rays coming from the light source are set to white, don't bother to ray trace further.
+		  if (m->getEmittedColor().Length() > 0.001) 
+			  return Vec3f(1,1,1);
+ 
+		  Vec3f normal = hit.getNormal();
+		  Vec3f point = ray.pointAtParameter(hit.getT());
+		  Vec3f answer;
+
+	     // ----------------------------------------------
+	     //  start with the indirect light (ambient light)
+	     Vec3f diffuse_color = m->getDiffuseColor(hit.get_s(),hit.get_t());
+		// the usual ray tracing hack for indirect light
+		answer = diffuse_color * args->ambient_light;
+	     
+	  // ----------------------------------------------
+	  // add contributions from each light that is not in shadow
+	  int num_lights = mesh->getLights().size(); 
+	  for (int i = 0; i < num_lights; i++) {
+		//soft shadow logic
+		Vec3f answerT;
+    
+		Face *f = mesh->getLights()[i];
+		Vec3f lightColor = f->getMaterial()->getEmittedColor() * f->getArea();
+		Vec3f myLightColor;
+		Vec3f lightCentroid = f->computeCentroid();
+		Vec3f dirToLightCentroid = lightCentroid-point;
+		dirToLightCentroid.Normalize();
+    
+
+		double distToLightCentroid = (lightCentroid-point).Length();
+		myLightColor = lightColor / (M_PI*distToLightCentroid*distToLightCentroid);
+
+		// ===========================================
+		// ASSIGNMENT:  ADD SHADOW & SOFT SHADOW LOGIC
+		// ===========================================
+
+		/* run once shooting to middle of light*/
+			if(args->num_shadow_samples == 1)
+			{
+				Ray shadowR (point,dirToLightCentroid);
+				Hit shadowH = Hit();
+				CastRay(shadowR,shadowH,false,box);
+
+				//IF no point bw point and light :
+				  // add the lighting contribution from this particular light at this point
+			
+				if (shadowH.getMaterial()->getEmittedColor().Length() > 0.001)   // Not in shadow (collides with light source quad)
+				{
+					answer += m->Shade(ray,hit,dirToLightCentroid,myLightColor,args); 
+				}
+				// add the lighting contribution from this particular light at this point
+				// (fix this to check for blockers between the light & this surface)
+				smoke->AddShadowSegment(shadowR,0,shadowH.getT());	
+		   } 
+			else if(args->num_shadow_samples >1)
+		   {
+		   
+			  /* multiple shadow rays for SOFT SHADOW */
+			  for(int j =0;j<args->num_shadow_samples;j++)
+			  {
+				  Vec3f randomP = f->RandomPoint();   //getting random point in light
+				  Vec3f dirToLight = randomP - point;  //dir from random point
+				  double dist = dirToLight.Length();
+				  dirToLight.Normalize();
+				  lightColor = f->getMaterial()->getEmittedColor() * f->getArea();
+
+				  lightColor /= M_PI*dist*dist;
+
+				  Ray shadowR (point ,dirToLight);
+				  Hit shadowH = Hit();
+				  CastRay(shadowR,shadowH,false,box);
+				   // if (!CastRay(shadowR,shadowH,false))
+				  if (shadowH.getMaterial()->getEmittedColor().Length() > 0.001)// Not in shadow (collides with light source quad) 
+				  {
+						answerT += m->Shade(ray,hit,dirToLight,lightColor,args); 
+				  }
+				  smoke->AddShadowSegment(shadowR, 0, shadowH.getT());
+			 
+			  }
+			 answer += answerT*(1/ double(args->num_shadow_samples)); //taking average
+			}
+			else
+			{
+				answer += m->Shade(ray,hit,dirToLightCentroid,myLightColor,args); 
+			}
+	   }
+
+	  // ----------------------------------------------
+	  // add contribution from reflection, if the surface is shiny
+	  Vec3f reflectiveColor = m->getReflectiveColor();
+ 
+	  // =================================
+	  // ASSIGNMENT:  ADD REFLECTIVE LOGIC
+	  // =================================
+
+		 MTRand mt =MTRand();
+		float c1 = (normal.Dot3(ray.getDirection())); //V*N
+		Ray reflectedR = Ray(point,ray.getDirection() - 2*normal*c1);  //Reflective eq. in notes
+		Hit reflectedH;
+
+		//answer +=m->getReflectiveColor()*TraceRay(reflectedR,reflectedH,bounce_count - 1);
+		smoke->AddReflectedSegment(reflectedR,0,reflectedH.getT());
+		color+=answer;
+	 }
+	 
+	return color;
 }
 
 float RayTracer::multipleScattering(const Ray &ray,Vec3f x,Vec3f x1,float lastSmokeCont,float distToLight,Vec3f dirToLight,Vec3f lightIntensity) const
@@ -274,10 +377,10 @@ float RayTracer::multipleScattering(const Ray &ray,Vec3f x,Vec3f x1,float lastSm
 	float C = (1/(2*pow(cosGamma,2)))*(pow(theta,2)/l);
 	float p1 = (1-pow(theta,2));
 	float p2 = (1+pow(theta,2)) - (2*theta*std::cos(cosGamma));
-	//float P = ((1-pow(theta,2)) / (4*M_PI*(pow(p2,(float)1.5))) ); //multiple scattering phase function
+	float P = ((1-pow(theta,2)) / (4*M_PI*(pow(p2,(float)1.5))) ); //multiple scattering phase function
 	
 	////Weight multiple scattering contribution
-	//float weight = exp(-(c/b)*l)*exp(-C)*P;
+	float weight = exp(-(c/b)*l)*exp(-C)*P;
 	float Ltotal = lastSmokeCont + L;//*weight;
 	return Ltotal;
 }
