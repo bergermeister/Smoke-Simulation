@@ -42,13 +42,14 @@ private:
 class Smoke {
 
 public:
+
+	std::vector<Vec3f> hitParticles;
 	OCTree *oc;
   // ========================
   // CONSTRUCTOR & DESTRUCTOR
   Smoke(ArgParser *_args);
   ~Smoke();
   void Load();
-  Vec3f background_color;
   void initializeVBOs();
   void setupVBOs();
   void setupVBOsR();
@@ -87,7 +88,7 @@ public:
   }
   
     BoundingBox * grid;
-    std::vector<VBOPos> smoke_particlesHit;
+   std::vector<VBOPos> smoke_particlesHit;
 	GLuint smoke_particles_Hit_VBO;
 private:
 
@@ -226,3 +227,4 @@ void setupConeVBO(const Vec3f pts[5], const Vec3f &color, std::vector<VBOPosNorm
 // ========================================================================
 
 #endif
+
