@@ -106,7 +106,7 @@ private:
   // ANIMATION HELPERS
   void ComputeNewVelocities();
   void SetBoundaryVelocities();
-  void EmptyVelocities(int i, int j, int k);
+  void EmptyVelocities(BoundingBox * c);
   void CopyVelocities();
   double AdjustForIncompressibility();
   void UpdatePressures();

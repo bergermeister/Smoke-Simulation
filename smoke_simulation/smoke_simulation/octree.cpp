@@ -96,8 +96,127 @@ void OCTree::AddParticle(const SmokeParticle * p)
 	}
 }
 
-BoundingBox * OCTree::getCell(double x, double y, double z)
+void OCTree::RemoveParticle(const SmokeParticle* p)
 {
+	assert(p != NULL);
+	for (std::vector<SmokeParticle*>::iterator i = bbox->getParticles().begin(); i != bbox->getParticles().end(); i++) {
+      if (*i == p) {
+        bbox->getParticles().erase(i);
+        return;
+      }
+    }
+    assert (0); 
+}
+
+void OCTree::cleanupTree()
+{
+	std::vector<OCTree*> todo;  
+	todo.push_back(this);
+	while (!todo.empty()) 
+	{
+		OCTree *node = todo.back();
+		todo.pop_back();
+		std::vector<SmokeParticle*> particles;
+		for(int i = 0; i < 8; i++)
+		{
+			std::vector<SmokeParticle*> childParticles = child[i]->getParticles();
+			for(int j = 0; j < childParticles.size(); j++) particles.push_back(childParticles[j]);
+		}
+		if (!node->isParentLeaf() && particles.size() <= MAX_PARTICLES_BEFORE_SPLIT) 
+		{
+			node->mergeChildren();
+		} 
+		else if (!node->isLeaf())
+		{
+			// if this cell is not a leaf, explore all children
+			for(int i = 0; i < 8; i++) todo.push_back(node->getChild(i));
+		}
+	}
+
+}
+
+void OCTree::mergeChildren()
+{
+	std::vector<SmokeParticle*> &particles = bbox->getParticles();
+	CollectParticlesInBox(*bbox, particles);
+	Vec3f new_velocities = Vec3f(bbox->get_u_plus(),bbox->get_v_plus(),bbox->get_w_plus());
+	for(int i = 0; i < 8; i++) 
+	{
+		new_velocities += Vec3f(child[i]->getCell()->get_u_plus(), child[i]->getCell()->get_v_plus(), child[i]->getCell()->get_w_plus());
+		delete child[i]; 
+		child[i] = NULL;
+	}
+	for(int i = 0; i < particles.size(); i++) AddParticle(particles[i]);
+	bbox->set_u_plus(new_velocities.x());
+	bbox->set_v_plus(new_velocities.y());
+	bbox->set_w_plus(new_velocities.z());
+	/*
+	std::vector<OCTree*> todo;  
+	todo.push_back(this);
+	while (!todo.empty()) 
+	{
+		OCTree *node = todo.back();
+		todo.pop_back();
+		std::vector<SmokeParticle*> particles;
+		for(int i = 0; i < 8; i++)
+		{
+			std::vector<SmokeParticle*> childParticles = child[i]->getParticles();
+			for(int j = 0; j < childParticles.size(); j++) particles.push_back(childParticles[j]);
+		}
+		if (!node->isLeaf() && particles.size() <= MAX_PARTICLES_BEFORE_SPLIT) 
+		{
+			for(int i = 0; i < 8; i++) {delete child[i]; child[i] = NULL;}
+			for(int i = 0; i < particles.size(); i++) bbox->addParticle(particles[i]);
+		} 
+		else if (!node->isLeaf())
+		{
+			// if this cell is not a leaf, explore all children
+			for(int i = 0; i < 8; i++) todo.push_back(node->getChild(i));
+		}
+	}
+	*/
+}
+
+BoundingBox * OCTree::getCell(Vec3f v)
+{
+	const Vec3f &position = v;
+	if (isLeaf()) 
+	{
+		// this cell is a leaf node
+		return bbox;
+	} 
+	else 
+	{
+		// this cell is not a leaf node
+		// decide which subnode to recurse into
+		if (position.x() < split_center.x())									// If the position is to the left..
+		{
+			if(position.y() < split_center.y())										// If the position is below..
+			{
+				if(position.z() < split_center.z()) child[0]->getCell(v);			// If the position is behind
+				else child[4]->getCell(v);											// Else it is in front
+			}
+			else																	// Else it is above
+			{
+				if(position.z() < split_center.z()) child[3]->getCell(v);			// If the position is behind
+				else child[7] ->getCell(v);											// Else it is in front
+			}
+		} 
+		else																	// Else it is to the right.
+		{
+			if(position.y() < split_center.y())										// If the position is below..
+			{
+				if(position.z() < split_center.z()) child[1]->getCell(v);			// If the position is behind
+				else child[5]->getCell(v);											// Else it is in front
+			}
+			else																	// Else it is above.
+			{
+				if(position.z() < split_center.z()) child[2]->getCell(v);			// If the position is behind
+				else child[6]->getCell(v);											// Else it is in front.
+			}
+		} 
+	}
+	/*
 	if(isLeaf()) return bbox;
 	else
 	{
@@ -115,6 +234,67 @@ BoundingBox * OCTree::getCell(double x, double y, double z)
 		}
 		child[j]->getCell(x,y,z);
 	}
+	*/
+}
+
+BoundingBox * OCTree::getCell(double x, double y, double z)
+{
+	const Vec3f &position = Vec3f(x,y,z);
+	if (isLeaf()) 
+	{
+		// this cell is a leaf node
+		return bbox;
+	} 
+	else 
+	{
+		// this cell is not a leaf node
+		// decide which subnode to recurse into
+		if (position.x() < split_center.x())									// If the position is to the left..
+		{
+			if(position.y() < split_center.y())										// If the position is below..
+			{
+				if(position.z() < split_center.z()) child[0]->getCell(x,y,z);			// If the position is behind
+				else child[4]->getCell(x,y,z);											// Else it is in front
+			}
+			else																	// Else it is above
+			{
+				if(position.z() < split_center.z()) child[3]->getCell(x,y,z);			// If the position is behind
+				else child[7] ->getCell(x,y,z);											// Else it is in front
+			}
+		} 
+		else																	// Else it is to the right.
+		{
+			if(position.y() < split_center.y())										// If the position is below..
+			{
+				if(position.z() < split_center.z()) child[1]->getCell(x,y,z);			// If the position is behind
+				else child[5]->getCell(x,y,z);											// Else it is in front
+			}
+			else																	// Else it is above.
+			{
+				if(position.z() < split_center.z()) child[2]->getCell(x,y,z);			// If the position is behind
+				else child[6]->getCell(x,y,z);											// Else it is in front.
+			}
+		} 
+	}
+	/*
+	if(isLeaf()) return bbox;
+	else
+	{
+		double dis = (Vec3f(x, y, z) - child[0]->getCenter()).Length();
+		double temp;
+		int j = 0;
+		for(int i = 1; i < 8; i++)
+		{
+			temp = (Vec3f(x, y, z) - child[i]->getCenter()).Length();
+			if(dis > temp) 
+			{
+				dis = temp;
+				j = i;
+			}
+		}
+		child[j]->getCell(x,y,z);
+	}
+	*/
 }
 // ==================================================================
 void OCTree::CollectParticlesInBox(const BoundingBox &bb, std::vector<SmokeParticle*> &particles) 
@@ -159,42 +339,66 @@ void OCTree::SplitCell() {
 	// Bottom 4 quadrants
 	BoundingBox * b = new BoundingBox(min, c);
 	child[0] = new OCTree(b, depth+1);
+	child[0]->getCell()->set_u_plus(bbox->get_u_plus());
+	child[0]->getCell()->set_v_plus(bbox->get_v_plus());
+	child[0]->getCell()->set_w_plus(bbox->get_w_plus());
 
 	Vec3f min2 = Vec3f(min.x()+dx, min.y(), min.z());
 	Vec3f max2 = Vec3f(c.x()+dx, c.y(), c.z());
 	b = new BoundingBox(min2, max2);
 	child[1] = new OCTree(b, depth+1);
+	child[1]->getCell()->set_u_plus(bbox->get_u_plus());
+	child[1]->getCell()->set_v_plus(bbox->get_v_plus());
+	child[1]->getCell()->set_w_plus(bbox->get_w_plus());
 
 	min2 = Vec3f(min.x()+dx, min.y()+dy, min.z());
 	max2 = Vec3f(c.x()+dx, c.y()+dy, c.z());
 	b = new BoundingBox(min2, max2);
 	child[2] = new OCTree(b, depth+1);
+	child[2]->getCell()->set_u_plus(bbox->get_u_plus());
+	child[2]->getCell()->set_v_plus(bbox->get_v_plus());
+	child[2]->getCell()->set_w_plus(bbox->get_w_plus());
 
 	min2 = Vec3f(min.x(), min.y()+dy, min.z());
 	max2 = Vec3f(c.x(), c.y()+dy, c.z());
 	b = new BoundingBox(min2, max2);
 	child[3] = new OCTree(b, depth+1);
+	child[3]->getCell()->set_u_plus(bbox->get_u_plus());
+	child[3]->getCell()->set_v_plus(bbox->get_v_plus());
+	child[3]->getCell()->set_w_plus(bbox->get_w_plus());
 
 	// Top 4 quadrants
 	min2 = Vec3f(min.x(), min.y(), min.z() + dz);
 	max2 = Vec3f(c.x(), c.y(), c.z() + dz);
 	b = new BoundingBox(min2, max2);
 	child[4] = new OCTree(b, depth+1);
+	child[4]->getCell()->set_u_plus(bbox->get_u_plus());
+	child[4]->getCell()->set_v_plus(bbox->get_v_plus());
+	child[4]->getCell()->set_w_plus(bbox->get_w_plus());
 
 	min2 = Vec3f(min.x()+dx, min.y(), min.z()+dz);
 	max2 = Vec3f(c.x()+dx, c.y(), c.z()+dz);
 	b = new BoundingBox(min2, max2);
 	child[5] = new OCTree(b, depth+1);
+	child[5]->getCell()->set_u_plus(bbox->get_u_plus());
+	child[5]->getCell()->set_v_plus(bbox->get_v_plus());
+	child[5]->getCell()->set_w_plus(bbox->get_w_plus());
 
 	min2 = Vec3f(min.x()+dx, min.y()+dy, min.z()+dz);
 	max2 = Vec3f(c.x()+dx, c.y()+dy, c.z()+dz);
 	b = new BoundingBox(min2, max2);
 	child[6] = new OCTree(b, depth+1);
+	child[6]->getCell()->set_u_plus(bbox->get_u_plus());
+	child[6]->getCell()->set_v_plus(bbox->get_v_plus());
+	child[6]->getCell()->set_w_plus(bbox->get_w_plus());
 
 	min2 = Vec3f(min.x(), min.y()+dy, min.z()+dz);
 	max2 = Vec3f(c.x(), c.y()+dy, c.z()+dz);
 	b = new BoundingBox(min2, max2);
 	child[7] = new OCTree(b, depth+1);
+	child[7]->getCell()->set_u_plus(bbox->get_u_plus());
+	child[7]->getCell()->set_v_plus(bbox->get_v_plus());
+	child[7]->getCell()->set_w_plus(bbox->get_w_plus());
 
 	int num_particles = bbox->numParticles();
 	std::vector<SmokeParticle*> tmp = bbox->getParticles();
