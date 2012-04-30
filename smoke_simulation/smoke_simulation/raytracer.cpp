@@ -61,12 +61,14 @@ Vec3f RayTracer::Trace(const Ray &ray, Hit &h, BoundingBox *box,BoundingBox *gri
 	
 	Vec3f color;
 	float MinimumDistance = 0.2;
+	double radius = 0.2;
 	answer  = false;
 	bool hit     = false;
 	bool out     = false; //out of main grid
     bool in      = false;
 	int steps=0;  //total num, of steps taken
-	
+	int bg = 0;
+	Vec3f temp = Vec3f(0,0,0);
 	Vec3f direction = ray.getDirection();
 	Vec3f from = ray.getOrigin();
 
@@ -77,7 +79,7 @@ Vec3f RayTracer::Trace(const Ray &ray, Hit &h, BoundingBox *box,BoundingBox *gri
 	bbBox->Set(min,max);
 	BoundingBox *mBox =smoke->oc->getCell(from.x(),from.y(),from.z());
 	std::vector<SmokeParticle *> pp = mBox->getParticles();
-
+	
 	int num_lights = mesh->getLights().size();
 	float lastSmokeCont = 0.0;
 	// add contributions from each light that is not in shadow
@@ -106,7 +108,7 @@ Vec3f RayTracer::Trace(const Ray &ray, Hit &h, BoundingBox *box,BoundingBox *gri
 					
 					in = true;
 					//float distance =pp[i]->DistanceEstimator(from);
-					if(ParticleInGrid(pp[i]->getPosition(),bbBox))
+					if(ParticleInCircle(pp[i]->getPosition(), from, radius))//ParticleInGrid(pp[i]->getPosition(),bbBox))
 					{
 						answer = true;		
 
@@ -161,15 +163,15 @@ Vec3f RayTracer::Trace(const Ray &ray, Hit &h, BoundingBox *box,BoundingBox *gri
 
 				mBox = smoke->oc->getCell(from.x(),from.y(),from.z());
 				pp = mBox->getParticles();
-				color +=Vec3f(srgb_to_linear(mesh->background_color.r()),srgb_to_linear(mesh->background_color.g()),srgb_to_linear(mesh->background_color.b()));
-
+				//color +=Vec3f(srgb_to_linear(mesh->background_color.r()),srgb_to_linear(mesh->background_color.g()),srgb_to_linear(mesh->background_color.b()));
+				temp +=Vec3f(srgb_to_linear(mesh->background_color.r()),srgb_to_linear(mesh->background_color.g()),srgb_to_linear(mesh->background_color.b()));
+				bg++;
 			}
 			if(!ParticleInGrid(from,grid))
 				out = true;
 			 smoke->hitParticles.push_back(from);
 		}
 	}
-	
 	return color;
 
 }
@@ -184,6 +186,12 @@ bool RayTracer::ParticleInGrid(const Vec3f position,const BoundingBox *b) const
 		  position.z() < b->getMax().z() )
 		return true;
   return false;
+}
+
+bool RayTracer::ParticleInCircle(const Vec3f pos, const Vec3f center, double radius) const
+{
+	if((pos-center).Length() <= radius) return true;
+	return false;
 }
 
 // ===========================================================================

@@ -31,7 +31,8 @@ public:
   // casts a single ray through the scene geometry and finds the closest hit
   bool CastRay(const Ray &ray, Hit &h, bool use_sphere_patches,BoundingBox *box) const;
   bool ParticleInGrid(const Vec3f position,const BoundingBox *b) const;
- 
+  bool ParticleInCircle(const Vec3f pos, const Vec3f center, double radius) const;
+
   // does the recursive work
   Vec3f TraceRay(Ray &ray, Hit &hit, int bounce_count = 0) const;
   static Radiosity *radiosity;
