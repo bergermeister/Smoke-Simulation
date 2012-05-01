@@ -6,6 +6,7 @@
 #include "ray.h"
 #include "hit.h"
 #include "smoke.h"
+#include "face.h"
 
 class Mesh;
 class ArgParser;
@@ -29,7 +30,7 @@ public:
   }  
 
   // casts a single ray through the scene geometry and finds the closest hit
-  bool CastRay(const Ray &ray, Hit &h, bool use_sphere_patches,BoundingBox *box) const;
+  bool CastRay(const Ray &ray, Hit &h, bool use_sphere_patches) const;
   bool ParticleInGrid(const Vec3f position,const BoundingBox *b) const;
   bool ParticleInCircle(const Vec3f pos, const Vec3f center, double radius) const;
 
@@ -38,8 +39,8 @@ public:
   static Radiosity *radiosity;
 private:
 
- Vec3f Trace(const Ray &ray, Hit &h,BoundingBox *box,BoundingBox *grid) const;
- float multipleScattering(const Ray &ray,Vec3f x,Vec3f x1,float lastSmokeCont,float distToLight,Vec3f dirToLight,Vec3f lightIntensity) const;
+ Vec3f Trace(const Ray &ray, Face *f) const;
+ Vec3f multipleScattering(const Ray &ray,Vec3f x,Vec3f T) const;
 
   // REPRESENTATION
   Smoke *smoke;
