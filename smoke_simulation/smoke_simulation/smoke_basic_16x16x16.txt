@@ -1,0 +1,15 @@
+grid 16 16 16
+
+flow compressible
+xy_boundary free_slip
+yz_boundary free_slip
+zx_boundary free_slip
+viscosity 0.1
+gravity 0
+
+initial_particles everywhere random
+density 2
+
+initial_velocity zero
+
+u 0 0 0 10
