@@ -40,7 +40,7 @@ public:
 private:
 
  Vec3f Trace(const Ray &ray, Face *f, Vec3f end) const;
- Vec3f Scattering(const Ray &ray,std::vector<SmokeParticle*>pr,int numParticles,Vec3f from,float radius,float width,float T) const;
+ Vec3f Scattering(const Ray &ray,std::vector<SmokeParticle*>pr,int numParticles,Vec3f from,float radius,float T,Face *f) const;
 
   // REPRESENTATION
   Smoke *smoke;

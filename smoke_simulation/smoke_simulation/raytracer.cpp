@@ -192,6 +192,7 @@ Vec3f RayTracer::Trace(const Ray &ray, Face *f, Vec3f end) const {
 	float width           = ray.getDirection().Length();
 	float T               = 1;
 	int steps             =  0;
+	int nS = 0;
 
 	particles.clear();
 	//Create the bounding box that surrounds our path space
@@ -241,7 +242,9 @@ Vec3f RayTracer::Trace(const Ray &ray, Face *f, Vec3f end) const {
   
 			//	double distToLightCentroid = (lightCentroid-from).Length();
 				//myLightColor = lightColor / (M_PI*distToLightCentroid*distToLightCentroid);
-			color += Scattering(ray,pr,numParticles,from,radius,width,T);
+			
+
+
 			
 			//}
 			//Volume = 4/3*M_PI*pow(radius,3);//*(ray.getOrigin() - from).Length();
@@ -250,6 +253,34 @@ Vec3f RayTracer::Trace(const Ray &ray, Face *f, Vec3f end) const {
 			//std::cout<<"volume "<<Volume<<" density "<<Density<<" radius "<<radius<<" particles "<<pr.size()<<std::endl;
 			
 			//smoke->hitParticles.push_back(from);
+			color += Scattering(ray,pr,numParticles,from,radius,T,f);
+
+			Vec3f lightColor = f->getMaterial()->getEmittedColor() * f->getArea();
+			Vec3f myLightColor;
+			Vec3f lightCentroid = f->computeCentroid();
+			Vec3f dirToLightCentroid = lightCentroid-from;
+			dirToLightCentroid.Normalize();
+			double distToLightCentroid = (lightCentroid-from).Length();
+			myLightColor = lightColor / (M_PI*distToLightCentroid*distToLightCentroid);
+
+			Ray shadowR (from,dirToLightCentroid);
+			Hit shadowH = Hit();
+			
+			CastRay(shadowR,shadowH,false);
+			Hit h=Hit();
+			//------------------
+			double t = (from.x() - ray.getOrigin().x())/ray.getDirection().x();
+			Vec3f normal = ray.pointAtParameter(t) - from;
+			normal.Normalize();
+			h.set(t, pr[0]->getMaterial(), normal);
+		
+			//------------------
+			//IF no point bw point and light : add the lighting contribution from this particular light at this point
+			if (shadowH.getMaterial()->getEmittedColor().Length() > 0.00001)   // Not in shadow (collides with light source quad)
+				//color += pr[0]->getMaterial()->Shade(ray,h,dirToLightCentroid,myLightColor,args); 
+				
+			smoke->AddShadowSegment(shadowR,0,shadowH.getT());	
+
 			from+=direction*radius;
 			distance -=radius;	
 			steps++;
@@ -294,9 +325,9 @@ Vec3f RayTracer::Trace(const Ray &ray, Face *f, Vec3f end) const {
 		}	
 	}
 	//std::cout<<steps<<std::endl;
-	int t = distance1/steps;
-	//color/=steps;
-	return color;
+	float t = distance1/steps;
+	
+	return color*t;
 }
 
 bool RayTracer::ParticleInGrid(const Vec3f position,const BoundingBox *b) const
@@ -453,17 +484,37 @@ bool RayTracer::ParticleInCircle(const Vec3f pos, const Vec3f center, float radi
 }
 
 
-Vec3f RayTracer::Scattering(const Ray &ray,std::vector<SmokeParticle *>pr,int numParticles,Vec3f from,float radius,float width,float T) const
+Vec3f RayTracer::Scattering(const Ray &ray,std::vector<SmokeParticle *>pr,int numParticles,Vec3f from,float radius,float T,Face *f) const
 {
+	Vec3f lightColor = f->getMaterial()->getEmittedColor() * f->getArea();
+	Vec3f myLightColor;
+	Vec3f lightCentroid = f->computeCentroid();
+	Vec3f dirToLightCentroid = lightCentroid-from;
+	dirToLightCentroid.Normalize();
+	double distToLightCentroid = (lightCentroid-from).Length();
+	myLightColor = lightColor / (M_PI*distToLightCentroid*distToLightCentroid);
+
+	int N = distToLightCentroid/10;
+
+	//while(N>0)
+	//{
+		//T=T*
+	//}
+	Vec3f L_d = T*myLightColor;
+
+	//----------------------------------------------
 	Vec3f L =Vec3f(0,0,0);
 	Vec3f x = from;
 	BoundingBox *b = smoke->oc->getCell(from.x(),from.y(),from.z());
 	Vec3f L2 = b->getLi();
 	Vec3f L1 = Vec3f(0,0,0);
+
 	for(int i=0;i<numParticles;i++)
 	{
+		
+		///---------------
 		L1 += (pr[i]->getMaterial()->getDiffuseColor() + pr[i]->getMaterial()->getEmittedColor())*T;
-		//L1+=L2;
+		L1+=L2;
 		particles.push_back(pr[i]);
 		smoke->hitParticles.push_back(pr[i]->getPosition());
 		//------------------------------------
@@ -474,19 +525,18 @@ Vec3f RayTracer::Scattering(const Ray &ray,std::vector<SmokeParticle *>pr,int nu
 		const float beta = 1.953;
 		float gau; 
 		gau = alpha * (1.0 - ( 1.0 - exp( -beta * pr[i]->getPosition().Length() / (2.0*from.Length()) ) )/( 1.0 - exp(-beta) ));
-		//L1.set(gau+L1.x(),gau+L1.y(),gau+L1.z());
+		L1.set(gau+L1.x(),gau+L1.y(),gau+L1.z());
 	}
 
 	
 	Volume = 4/3*M_PI*pow(radius,3);//*(ray.getOrigin() - from).Length();
 	float Density = abs(numParticles/Volume);
 	L1 /=Density;
-
 	L +=L1;
 
 	for(int j = 0;j<mesh->numFaces();j++){
 		Face *f = mesh->getFace(j); 
-		Vec3f p = f->getMaterial()->getReflectiveColor();  
+		double p = 1/4*M_PI;
 	    Vec3f Lr = (f->getMaterial()->getDiffuseColor() + f->getMaterial()->getEmittedColor())*T;
 		int V = 0;      //visibility (0-1)
 		float H;       // geometry term

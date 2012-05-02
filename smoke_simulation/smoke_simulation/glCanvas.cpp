@@ -230,9 +230,8 @@ Vec3f GLCanvas::TraceRay(double i, double j) {
    double y = (j+0.5-args->height/2.0)/double(max_d)+0.5;	
    Hit hit;	
    Ray r = camera->generateRay(x,y); 
-   smoke->AddMainSegment(r,0,hit.getT());
+   smoke->hitParticles.clear();
    color = raytracer->TraceRay(r,hit,args->num_bounces);
-   
    // add that ray for visualization
    smoke->AddMainSegment(r,0,hit.getT());
  
@@ -434,7 +433,7 @@ void GLCanvas::idle() {
 
 	  // add contributions from each light that is not in shadow
 	int num_lights = mesh->getLights().size();
-	float b =.4; //scattering coefficient
+	float b = .4; //scattering coefficient
 	float a = .2; //absorption coefficient
 	float c = b+a;
 	for (int i = 0; i < num_lights; i++) 
