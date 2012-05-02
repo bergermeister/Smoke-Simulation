@@ -44,6 +44,9 @@ public:
       } else if (!strcmp(argv[i],"-num_shadow_samples")) {
 	i++; assert (i < argc); 
 	num_shadow_samples = atoi(argv[i]);
+      }else if (!strcmp(argv[i],"-num_smoke_samples")) {
+	i++; assert (i < argc); 
+	num_smoke_samples = atoi(argv[i]);
       } else {
 		printf ("whoops error with command line argument %d: '%s'\n",i,argv[i]);
 		assert(0);
@@ -90,6 +93,7 @@ public:
 	 num_bounces = 0;
 	 ambient_light = Vec3f(0.1,0.1,0.1);
 	 num_shadow_samples = 0;
+	  num_smoke_samples = 1;
     // uncomment for deterministic randomness
     // mtrand = MTRand(37);
     
@@ -137,6 +141,7 @@ public:
   // used by Smoke
   int face_velocity;
   int dense_velocity;
+  int num_smoke_samples;
   double isosurface;
   bool cubes;
   bool pressure;
