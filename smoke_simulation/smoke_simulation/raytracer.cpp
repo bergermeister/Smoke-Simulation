@@ -6,7 +6,7 @@
 #include "mesh.h"
 #include "primitive.h"
 
-#define EPSILON 0.0005
+#define EPSILON 0.05
 
 std::vector<SmokeParticle*>particles;
 float Volume;
@@ -60,7 +60,7 @@ bool sortPhotons(const SmokeParticle *p1, const  SmokeParticle *p2)
 }
 // ===========================================================================
 // ray marching
-Vec3f RayTracer::Trace(const Ray &ray, Face *f) const {
+Vec3f RayTracer::Trace(const Ray &ray, Face *f, Vec3f end) const {
 	//particles.clear();
 	//Vec3f color;
 	//int numParticles = 25;
@@ -182,112 +182,98 @@ Vec3f RayTracer::Trace(const Ray &ray, Face *f) const {
 	//Volume = M_PI*pow(radius,2)*(ray.getOrigin() - from).Length();
 	////std::cout<<particles.size()<<" " <<radius<<" "<<Volume<<std::endl;
 	//return color;
-    BoundingBox *grid= smoke->oc->getCell();
-
-    particles.clear();
-	Vec3f color = Vec3f(0,0,0);
-	int numParticles = 10;
-	float  radius         = 0.2;
-	float lastSmokeCont   = 0.0;
-	bool out              = false; //out of main grid
-
-	Vec3f direction = ray.getDirection();
+    Vec3f direction = ray.getDirection();
 	Vec3f from = ray.getOrigin();
+	float distance = (end - from).Length();
+	float distance1 = (end - from).Length();
+	Vec3f color           = Vec3f(0,0,0);
+	int numParticles      = 5;
+	float  radius         = ray.getDirection().Length();//0.5;
+	float width           = ray.getDirection().Length();
+	float T               = 1;
+	int steps             =  0;
 
+	particles.clear();
 	//Create the bounding box that surrounds our path space
-	Vec3f max = Vec3f((float)from.x()+ radius, (float)from.y()+ radius,(float)from.z()+ radius);
-	Vec3f min = Vec3f((float)from.x()- radius, (float)from.y()- radius,(float)from.z()- radius);
+	Vec3f max = Vec3f((float)from.x() + radius, (float)from.y() + radius,(float)from.z() + radius);
+	Vec3f min = Vec3f((float)from.x() - radius, (float)from.y() - radius,(float)from.z() - radius);
 	BoundingBox bb=BoundingBox(min,max);
 	std::vector<SmokeParticle *> pp;
+	std::vector<SmokeParticle*>pr;
 	smoke->oc->CollectParticlesInBox(bb,pp);
 	
 	Vec3f lightColor = f->getMaterial()->getEmittedColor() * f->getArea();
 	Vec3f myLightColor;
 	Vec3f lightCentroid = f->computeCentroid();
-	std::vector<SmokeParticle*>pr;
 		
 	/* while in inside grid, keep marching*/
-	while(!out) 
+	while(distance >0) 
 	{
+		if(steps>400)
+			break;
 		for(int i=0;i<pp.size();i++)
 		{
 			/* if particle in radius */;
-			if(ParticleInCircle(pp[i]->getPosition(), from, radius))
+			if(ParticleInCircle(pp[i]->getPosition(), from, radius,width))
 			{
 				bool pass = true;
-				for(int j=0;j<particles.size();j++)
-				{	
+				for(int j=0;j<particles.size();j++)	
 					if(pp[i] == particles[j]) pass = false;
-				}
 				if(pass)
 					pr.push_back(pp[i]);
 			}
 		}
-
 		if(pr.size()>= numParticles)
 		{
 			GLOBAL_point = from;
 			std::sort(pr.begin(), pr.end(), sortPhotons);
 			radius = (from - pr[numParticles - 1]->getPosition()).Length();   	// Update radius to just contain these photons
-		
-			for(int i=0;i<numParticles;i++)
-			{		
-				Material *m = pr[i]->getMaterial();
-				color += m->getEmittedColor();
-				Vec3f point = ray.pointAtParameter(pr[i]->getPosition().Length());
-
-				Vec3f dirToLightCentroid = lightCentroid-point;
-				dirToLightCentroid.Normalize();
+		   
+			T = T*(exp(-c*(ray.getOrigin() - from).Length()))*radius;
+	        
+			//for(int i=0;i<pr.size();i++)
+			//{		
+				//color += pr[i]->getMaterial()->getEmittedColor() + pr[i]->getMaterial()->getDiffuseColor();
+				//Vec3f point = ray.pointAtParameter(pr[i]->getPosition().Length());
+				//std::cout<<point.x()<<" "<<point.y()<<" "<<point.z()<<"       "<<from.x()<<" "<<from.y()<<" "<<from.z()<<std::endl;
+				//Vec3f dirToLightCentroid = lightCentroid-from;
+				//dirToLightCentroid.Normalize();
   
-				double distToLightCentroid = (lightCentroid-point).Length();
-				myLightColor = lightColor / (M_PI*distToLightCentroid*distToLightCentroid);
-
-				color += multipleScattering(ray,pr[i]->getPosition(),from);
-				
-				particles.push_back(pr[i]);
-				smoke->hitParticles.push_back(pr[i]->getPosition());
-		
-				//------------------------------------
-				//gaussian filter
-				//------------------------------------
-				const float gauss_norm = 1.8790;            // normalization of gaussian
-				const float alpha = 0.918 * gauss_norm;
-				const float beta = 1.953;
-				float gau; 
-				gau = alpha * (1.0 - ( 1.0 - exp( -beta * pr[i]->getPosition().Length() / (2.0*from.Length()) ) )/( 1.0 - exp(-beta) ));
-
-				lastSmokeCont +=gau;
-				//color.set(lastSmokeCont+color.x(),lastSmokeCont+color.y(),lastSmokeCont+color.z());
-			}
-			Volume = 4/3*M_PI*pow(radius,3);//*(ray.getOrigin() - from).Length();
-			float Density = abs(numParticles/Volume);
-			color /=Density;
-			//std::cout<<"volume "<<Volume<<" density "<<Density<<" radius "<<radius<<" particles "<<pr.size()<<std::endl;
-			pr.clear();
-
-			smoke->hitParticles.push_back(from);
-			from+=direction*radius;
-				
-			//radius = 0.2;
-			// creating new boundng box in new step
-			max = Vec3f((float)from.x()+ radius,(float) from.y()+ radius,(float)from.z()+ radius);
-			min = Vec3f((float)from.x()- radius, (float)from.y()- radius,(float)from.z()- radius);
-			bb.Set(min,max);
-			pp.clear();
-			smoke->oc->CollectParticlesInBox(bb,pp);
+			//	double distToLightCentroid = (lightCentroid-from).Length();
+				//myLightColor = lightColor / (M_PI*distToLightCentroid*distToLightCentroid);
+			color += Scattering(ray,pr,numParticles,from,radius,width,T);
 			
-		}
-		else if(pr.size()<=0)
-		{
-			smoke->hitParticles.push_back(from);
+			//}
+			//Volume = 4/3*M_PI*pow(radius,3);//*(ray.getOrigin() - from).Length();
+			//float Density = abs(numParticles/Volume);
+			//color /=Density;
+			//std::cout<<"volume "<<Volume<<" density "<<Density<<" radius "<<radius<<" particles "<<pr.size()<<std::endl;
+			
+			//smoke->hitParticles.push_back(from);
 			from+=direction*radius;
-			//radius = 0.2;
+			distance -=radius;	
+			steps++;
+			// creating new boundng box in new step
+			max = Vec3f((float)from.x()+ radius,(float) from.y()+ radius,(float)from.z()+ radius);
+			min = Vec3f((float)from.x()- radius, (float)from.y()- radius,(float)from.z()- radius);
+			bb.Set(min,max);
+			pp.clear();
+			pr.clear();
+			smoke->oc->CollectParticlesInBox(bb,pp);
+			smoke->hitParticles.push_back(from);
+		}
+		if(pr.size()<=0)
+		{
+			from+=direction*radius;
+			distance -=radius;	
+			steps++;
 			// creating new boundng box in new step
 			max = Vec3f((float)from.x()+ radius,(float) from.y()+ radius,(float)from.z()+ radius);
 			min = Vec3f((float)from.x()- radius, (float)from.y()- radius,(float)from.z()- radius);
 			bb.Set(min,max);
 			pp.clear();
 			smoke->oc->CollectParticlesInBox(bb,pp);
+			smoke->hitParticles.push_back(from);
 		}
 		else
 		{
@@ -299,34 +285,36 @@ Vec3f RayTracer::Trace(const Ray &ray, Face *f) const {
 			pp.clear();
 			smoke->oc->CollectParticlesInBox(bb,pp);
 			if(radius>1.5)
-				out = true;
-		}
-			
-		if(!ParticleInGrid(from,grid))
-			out = true;
-			smoke->hitParticles.push_back(from);
+			{	
+				from+=direction*radius;
+				distance -=radius;
+				steps++;
+				smoke->hitParticles.push_back(from);
+			}
+		}	
 	}
-	
-	//std::cout<<color.x()<<" "<<color.y()<<" "<<color.z()<<" "<<particles.size()<<std::endl;
-	//Volume = M_PI*pow(radius,2)*(ray.getOrigin() - from).Length();
+	//std::cout<<steps<<std::endl;
+	int t = distance1/steps;
+	//color/=steps;
 	return color;
 }
 
 bool RayTracer::ParticleInGrid(const Vec3f position,const BoundingBox *b) const
 {
-	if (position.x() > b->getMin().x() - EPSILON&&
-		  position.y() > b->getMin().y() - EPSILON &&
-		  position.z() > b->getMin().z() - EPSILON&&
-		  position.x() < b->getMax().x() +EPSILON  &&
-		  position.y() < b->getMax().y() +EPSILON &&
-		  position.z() < b->getMax().z() +EPSILON )
+	if (position.x() >= b->getMin().x() - EPSILON&&
+		  position.y() >= b->getMin().y() - EPSILON &&
+		  position.z() >= b->getMin().z() - EPSILON&&
+		  position.x() <= b->getMax().x() +EPSILON  &&
+		  position.y() <= b->getMax().y() +EPSILON &&
+		  position.z() <= b->getMax().z() +EPSILON )
 		return true;
   return false;
 }
 
-bool RayTracer::ParticleInCircle(const Vec3f pos, const Vec3f center, double radius) const
+bool RayTracer::ParticleInCircle(const Vec3f pos, const Vec3f center, float radius,float width) const
 {
 	if((pos-center).Length() <= radius) return true;
+
 	return false;
 }
 
@@ -341,7 +329,8 @@ bool RayTracer::ParticleInCircle(const Vec3f pos, const Vec3f center, double rad
 	bool intersect = CastRay(ray1,hit,false);
 	//if non of rays hit anything, return backgroud color
 	if (!intersect ) return Vec3f(srgb_to_linear(mesh->background_color.r()),srgb_to_linear(mesh->background_color.g()),srgb_to_linear(mesh->background_color.b()));
-
+	
+	 Vec3f end = ray1.pointAtParameter(hit.getT());
 	//decide what to do based on the material
 	Material *m = hit.getMaterial();
 	assert (m != NULL);
@@ -378,9 +367,13 @@ bool RayTracer::ParticleInCircle(const Vec3f pos, const Vec3f center, double rad
 		
 		Vec3f from = ray1.getOrigin();
 		Vec3f n = ray1.getDirection();
+		int count = 0;
 		//while not in bbox
 		while(!ParticleInGrid(from,grid))
 		{ 
+			if(count >1000)
+				break;
+			count++;
 			from += n;
 			smoke->hitParticles.push_back(from);	
 		}
@@ -400,11 +393,8 @@ bool RayTracer::ParticleInCircle(const Vec3f pos, const Vec3f center, double rad
 		//------------------------------------------------
 		//soft shadow logic
 		
-		Hit hit1 = Hit();
-		n.set(n.x()/20,n.y()/20,n.z()/20);
 		Ray ray = Ray(from,n);	
-		colorSmoke = Trace(ray,f);
-		
+		colorSmoke = Trace(ray,f,end);	
      //-----------------------------------------------------
 	
 		/* run once shooting to middle of light*/
@@ -454,7 +444,7 @@ bool RayTracer::ParticleInCircle(const Vec3f pos, const Vec3f center, double rad
 	Ray reflectedR = Ray(point,ray1.getDirection() - 2*normal*c1);  //Reflective eq. in notes
 	Hit reflectedH;
 
-	answer +=m->getReflectiveColor()*TraceRay(reflectedR,reflectedH,bounce_count - 1);
+	//answer +=m->getReflectiveColor()*TraceRay(reflectedR,reflectedH,bounce_count - 1);
 	smoke->AddReflectedSegment(reflectedR,0,reflectedH.getT());
 	
 
@@ -463,27 +453,52 @@ bool RayTracer::ParticleInCircle(const Vec3f pos, const Vec3f center, double rad
 }
 
 
-Vec3f RayTracer::multipleScattering(const Ray &ray,Vec3f x,Vec3f from) const
+Vec3f RayTracer::Scattering(const Ray &ray,std::vector<SmokeParticle *>pr,int numParticles,Vec3f from,float radius,float width,float T) const
 {
 	Vec3f L =Vec3f(0,0,0);
+	Vec3f x = from;
 	BoundingBox *b = smoke->oc->getCell(from.x(),from.y(),from.z());
-	Vec3f T = b->getLi();
+	Vec3f L2 = b->getLi();
+	Vec3f L1 = Vec3f(0,0,0);
+	for(int i=0;i<numParticles;i++)
+	{
+		L1 += (pr[i]->getMaterial()->getDiffuseColor() + pr[i]->getMaterial()->getEmittedColor())*T;
+		//L1+=L2;
+		particles.push_back(pr[i]);
+		smoke->hitParticles.push_back(pr[i]->getPosition());
+		//------------------------------------
+		//gaussian filter
+		//------------------------------------
+		const float gauss_norm = 1.8790;            // normalization of gaussian
+		const float alpha = 0.918 * gauss_norm;
+		const float beta = 1.953;
+		float gau; 
+		gau = alpha * (1.0 - ( 1.0 - exp( -beta * pr[i]->getPosition().Length() / (2.0*from.Length()) ) )/( 1.0 - exp(-beta) ));
+		//L1.set(gau+L1.x(),gau+L1.y(),gau+L1.z());
+	}
+
 	
+	Volume = 4/3*M_PI*pow(radius,3);//*(ray.getOrigin() - from).Length();
+	float Density = abs(numParticles/Volume);
+	L1 /=Density;
+
+	L +=L1;
+
 	for(int j = 0;j<mesh->numFaces();j++){
 		Face *f = mesh->getFace(j); 
 		Vec3f p = f->getMaterial()->getReflectiveColor();  
-		Vec3f Lr = (f->getMaterial()->getDiffuseColor() + f->getMaterial()->getEmittedColor())*T;
+	    Vec3f Lr = (f->getMaterial()->getDiffuseColor() + f->getMaterial()->getEmittedColor())*T;
 		int V = 0;      //visibility (0-1)
 		float H;       // geometry term
 		float pdf;     //probability of distribution function
- 		
-		for(int i=0;i<args->num_smoke_samples;i++)
-		{
+ 	
+		//for(int i=0;i<args->num_smoke_samples;i++)
+		//{
 			Vec3f x1;
-			if(i==0)
+			//if(i==0)
 				x1 = f->computeCentroid();
-			else
-				x1 = f->RandomPoint();
+			//else
+			//	x1 = f->RandomPoint();
 			
 			H = (f->computeNormal().Dot3((x-x1)/(x-x1).Length()) )/ pow((x-x1).Length(),2);
 			if(H < 0) H=0;
@@ -493,17 +508,17 @@ Vec3f RayTracer::multipleScattering(const Ray &ray,Vec3f x,Vec3f from) const
 			Ray r = Ray(x,n);
 			Hit h = Hit();
 			bool intersect = f->intersect(ray,h,false);
-		    if(intersect)  //visible by face
+			if(intersect)  //visible by face
 			   V=1;
 
 			pdf = (f->computeNormal().Dot3((from-x1)/(from-x1).Length()) )/ pow((from-x1).Length(),2);
 
 			L += (p*Lr*V*H)/pdf;  //Single Scattering
+			//}	
 		}
-		
-	}
-	
-	L /=(args->num_smoke_samples*mesh->numFaces());
+
+	L /=(mesh->numFaces());
+
 	return L;
 }
 	

@@ -32,15 +32,15 @@ public:
   // casts a single ray through the scene geometry and finds the closest hit
   bool CastRay(const Ray &ray, Hit &h, bool use_sphere_patches) const;
   bool ParticleInGrid(const Vec3f position,const BoundingBox *b) const;
-  bool ParticleInCircle(const Vec3f pos, const Vec3f center, double radius) const;
+  bool ParticleInCircle(const Vec3f pos, const Vec3f center, float radius,float width) const;
 
   // does the recursive work
   Vec3f TraceRay(Ray &ray, Hit &hit, int bounce_count = 0) const;
   static Radiosity *radiosity;
 private:
 
- Vec3f Trace(const Ray &ray, Face *f) const;
- Vec3f multipleScattering(const Ray &ray,Vec3f x,Vec3f T) const;
+ Vec3f Trace(const Ray &ray, Face *f, Vec3f end) const;
+ Vec3f Scattering(const Ray &ray,std::vector<SmokeParticle*>pr,int numParticles,Vec3f from,float radius,float width,float T) const;
 
   // REPRESENTATION
   Smoke *smoke;
