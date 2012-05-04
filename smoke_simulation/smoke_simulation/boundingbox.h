@@ -126,7 +126,14 @@ public:
 	    minimum.y() <= maximum.y() &&
 	    minimum.z() <= maximum.z());
     minimum = _minimum;
-    maximum = _maximum; }
+    maximum = _maximum;
+	u_plus = 0;
+	v_plus = 0;
+	w_plus = 0;
+	new_u_plus = 0;
+	new_v_plus = 0;
+	new_w_plus = 0;
+	pressure = 0;}
   void Extend(const Vec3f &v) {
     minimum = Vec3f(my_min(minimum.x(),v.x()),
 		    my_min(minimum.y(),v.y()),

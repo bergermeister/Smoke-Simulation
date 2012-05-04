@@ -64,7 +64,7 @@ void Smoke::setupVBOs() {
 
   setupFaceVelocity();
   setupVelocity();
-
+  /*
   // =====================================================================================
   // visualize the cell pressure
   // =====================================================================================
@@ -100,7 +100,7 @@ void Smoke::setupVBOs() {
 			}
 		}
 	}
-
+	*/
   // =====================================================================================
   // render the MAC cells (FULL, SURFACE, or EMPTY)
   // =====================================================================================
@@ -142,10 +142,12 @@ void Smoke::setupVBOs() {
 
   // copy the data to each VBO
   glBindBuffer(GL_ARRAY_BUFFER,smoke_particles_VBO); 
-  glBufferData(GL_ARRAY_BUFFER,sizeof(VBOPos)*smoke_particles.size(),&smoke_particles[0],GL_STATIC_DRAW); 
-  if (smoke_velocity_vis.size() > 0) {
-    glBindBuffer(GL_ARRAY_BUFFER,smoke_velocity_vis_VBO); 
-    glBufferData(GL_ARRAY_BUFFER,sizeof(VBOPosColor)*smoke_velocity_vis.size(),&smoke_velocity_vis[0],GL_STATIC_DRAW); 
+  if(smoke_particles.size() > 0){
+	  glBufferData(GL_ARRAY_BUFFER,sizeof(VBOPos)*smoke_particles.size(),&smoke_particles[0],GL_STATIC_DRAW); 
+	  if (smoke_velocity_vis.size() > 0) {
+		glBindBuffer(GL_ARRAY_BUFFER,smoke_velocity_vis_VBO); 
+		glBufferData(GL_ARRAY_BUFFER,sizeof(VBOPosColor)*smoke_velocity_vis.size(),&smoke_velocity_vis[0],GL_STATIC_DRAW); 
+	  }
   }
   if (smoke_face_velocity_vis.size() > 0) {
 		glBindBuffer(GL_ARRAY_BUFFER,smoke_face_velocity_vis_VBO); 
