@@ -1,4 +1,4 @@
-grid 16 16 16
+grid 8 8 8
 
 flow compressible
 xy_boundary free_slip
@@ -8,8 +8,11 @@ viscosity 0.1
 gravity 0
 
 initial_particles everywhere random
-density 2
+density 0.5
 
 initial_velocity zero
 
-u 0 0 0 10
+u 0 0 0 5
+u 0 0 2 5
+u 0 0 4 5
+u 0 0 6 5

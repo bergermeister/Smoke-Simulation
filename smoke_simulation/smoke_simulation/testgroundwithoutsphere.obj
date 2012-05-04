@@ -1,0 +1,67 @@
+material
+diffuse 0 0 0
+reflective 0 0 0
+emitted 35 35 35
+
+material
+diffuse 1 0 0
+reflective 0 0 0
+emitted 0 0 0
+
+material 
+diffuse 0 1 1
+reflective 0 0 0
+emitted 0 0 0
+
+material 
+diffuse 0.7 0.7 0.7
+reflective 0 0 0
+emitted 0 0 0
+
+material 
+diffuse 0 0 1
+reflective 0 0 0
+emitted 0 0 0
+
+material
+diffuse 1 1 0
+reflective 0 0 0
+emitted 0 0 0
+
+material 
+diffuse 0 1 0
+reflective 0.8 0.8 0.8
+emitted 0 0 0
+
+v -0 -0 -0
+v 16 -0 -0
+v -0 16 -0
+v 16 16 -0
+v -0 -0 16
+v 16 -0 16
+v -0 16 16
+v 16 16 16
+v 7 16 -0
+v 7 16 16
+v 9 16 -0
+v 9 16 16
+
+v 6 20 10
+v 6 20 6
+v 10 20 6
+v 10 20 10
+
+m 0
+f 13 14 15 16
+
+m 1
+f 1 5 6 2
+
+background_color 0 0 0
+
+PerspectiveCamera {
+  camera_position    5.3406 2.02057 5.92681
+  point_of_interest  1.3208 0.388196 0.955876
+  up                 0 1 0
+  angle              0.349066
+}

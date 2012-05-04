@@ -87,7 +87,7 @@ public:
     transmitted_segments.push_back(Segment(ray,tstart,tstop));
   }
   
-    BoundingBox * grid;
+    BoundingBox *grid;
    std::vector<VBOPos> smoke_particlesHit;
 	GLuint smoke_particles_Hit_VBO;
 private:

@@ -1,6 +1,6 @@
 #include "octree.h"
 
-#define EPSILON 0.0005
+#define EPSILON 0.00005
 #define MAX_DEPTH 10
 #define MAX_PARTICLES_BEFORE_SPLIT 50
 
@@ -21,8 +21,8 @@ OCTree::~OCTree() {
 // HELPER FUNCTIONS
 
 bool OCTree::ParticleInCell(const SmokeParticle * p) {
-  const Vec3f& min = bbox->getMin();
-  const Vec3f& max = bbox->getMax();
+  const Vec3f& min = this->bbox->getMin();
+  const Vec3f& max = this->bbox->getMax();
   const Vec3f &position = p->getPosition();
   if (position.x() > min.x() - EPSILON &&
       position.y() > min.y() - EPSILON &&
@@ -50,10 +50,15 @@ bool OCTree::overlaps(const BoundingBox &bb) const {
 
 
 // ==================================================================
-void OCTree::AddParticle(const SmokeParticle * p) 
+void OCTree::AddParticle(SmokeParticle * p) 
 {
 	const Vec3f &position = p->getPosition();
-	assert (ParticleInCell(p));
+	if(!ParticleInCell(p)){
+		if(p->getPosition().x() > bbox->getMax().x()) p->setPosition(Vec3f(bbox->getMax().x()-EPSILON, p->getPosition().y(), p->getPosition().z()));
+		if(p->getPosition().y() > bbox->getMax().y()) p->setPosition(Vec3f(p->getPosition().x(), bbox->getMax().y()-EPSILON, p->getPosition().z()));
+		if(p->getPosition().z() > bbox->getMax().z()) p->setPosition(Vec3f(p->getPosition().x(), p->getPosition().y(), bbox->getMax().z()-EPSILON));
+	}
+	//assert (ParticleInCell(p));
 	if (isLeaf()) 
 	{
 		// this cell is a leaf node
@@ -65,6 +70,15 @@ void OCTree::AddParticle(const SmokeParticle * p)
 	} 
 	else 
 	{
+		if(child[0]->ParticleInCell(p)) child[0]->AddParticle(p);
+		else if(child[1]->ParticleInCell(p)) child[1]->AddParticle(p);
+		else if(child[2]->ParticleInCell(p)) child[2]->AddParticle(p);
+		else if(child[3]->ParticleInCell(p)) child[3]->AddParticle(p);
+		else if(child[4]->ParticleInCell(p)) child[4]->AddParticle(p);
+		else if(child[5]->ParticleInCell(p)) child[5]->AddParticle(p);
+		else if(child[6]->ParticleInCell(p)) child[6]->AddParticle(p);
+		else if(child[7]->ParticleInCell(p)) child[7]->AddParticle(p);
+		/*
 		// this cell is not a leaf node
 		// decide which subnode to recurse into
 		if (position.x() < split_center.x())									// If the position is to the left..
@@ -77,7 +91,7 @@ void OCTree::AddParticle(const SmokeParticle * p)
 			else																	// Else it is above
 			{
 				if(position.z() < split_center.z()) child[3]->AddParticle(p);			// If the position is behind
-				else child[7] ->AddParticle(p);											// Else it is in front
+				else child[7]->AddParticle(p);											// Else it is in front
 			}
 		} 
 		else																	// Else it is to the right.
@@ -90,9 +104,10 @@ void OCTree::AddParticle(const SmokeParticle * p)
 			else																	// Else it is above.
 			{
 				if(position.z() < split_center.z()) child[2]->AddParticle(p);			// If the position is behind
-				else child[6] ->AddParticle(p);											// Else it is in front.
+				else child[6]->AddParticle(p);											// Else it is in front.
 			}
 		} 
+		*/
 	}
 }
 
@@ -117,64 +132,43 @@ void OCTree::cleanupTree()
 		OCTree *node = todo.back();
 		todo.pop_back();
 		std::vector<SmokeParticle*> particles;
-		for(int i = 0; i < 8; i++)
-		{
-			std::vector<SmokeParticle*> childParticles = child[i]->getParticles();
-			for(int j = 0; j < childParticles.size(); j++) particles.push_back(childParticles[j]);
-		}
-		if (!node->isParentLeaf() && particles.size() <= MAX_PARTICLES_BEFORE_SPLIT) 
-		{
-			node->mergeChildren();
-		} 
-		else if (!node->isLeaf())
-		{
+		if(!node->isLeaf()){
+			for(int i = 0; i < 8; i++)
+			{
+				std::vector<SmokeParticle*> childParticles = node->child[i]->getParticles();
+				for(int j = 0; j < childParticles.size(); j++) particles.push_back(childParticles[j]);
+			}
+			if (node->isParentLeaf() && particles.size() <= MAX_PARTICLES_BEFORE_SPLIT) 
+			{
+				node->mergeChildren(particles);
+			} 
+			else //if (!node->isLeaf())
+			{
 			// if this cell is not a leaf, explore all children
 			for(int i = 0; i < 8; i++) todo.push_back(node->getChild(i));
+			}
 		}
+		
 	}
 
 }
 
-void OCTree::mergeChildren()
+void OCTree::mergeChildren(std::vector<SmokeParticle *> & particles)
 {
-	std::vector<SmokeParticle*> &particles = bbox->getParticles();
-	CollectParticlesInBox(*bbox, particles);
 	Vec3f new_velocities = Vec3f(bbox->get_u_plus(),bbox->get_v_plus(),bbox->get_w_plus());
+	double new_pressure = 0.0;
 	for(int i = 0; i < 8; i++) 
 	{
 		new_velocities += Vec3f(child[i]->getCell()->get_u_plus(), child[i]->getCell()->get_v_plus(), child[i]->getCell()->get_w_plus());
+		new_pressure = child[i]->getCell()->getPressure();
 		delete child[i]; 
 		child[i] = NULL;
 	}
-	for(int i = 0; i < particles.size(); i++) AddParticle(particles[i]);
+	for(int i = 0; i < particles.size(); i++) this->AddParticle(particles[i]);
 	bbox->set_u_plus(new_velocities.x());
 	bbox->set_v_plus(new_velocities.y());
 	bbox->set_w_plus(new_velocities.z());
-	/*
-	std::vector<OCTree*> todo;  
-	todo.push_back(this);
-	while (!todo.empty()) 
-	{
-		OCTree *node = todo.back();
-		todo.pop_back();
-		std::vector<SmokeParticle*> particles;
-		for(int i = 0; i < 8; i++)
-		{
-			std::vector<SmokeParticle*> childParticles = child[i]->getParticles();
-			for(int j = 0; j < childParticles.size(); j++) particles.push_back(childParticles[j]);
-		}
-		if (!node->isLeaf() && particles.size() <= MAX_PARTICLES_BEFORE_SPLIT) 
-		{
-			for(int i = 0; i < 8; i++) {delete child[i]; child[i] = NULL;}
-			for(int i = 0; i < particles.size(); i++) bbox->addParticle(particles[i]);
-		} 
-		else if (!node->isLeaf())
-		{
-			// if this cell is not a leaf, explore all children
-			for(int i = 0; i < 8; i++) todo.push_back(node->getChild(i));
-		}
-	}
-	*/
+	bbox->setPressure(new_pressure);
 }
 
 BoundingBox * OCTree::getCell(Vec3f v)
@@ -216,25 +210,6 @@ BoundingBox * OCTree::getCell(Vec3f v)
 			}
 		} 
 	}
-	/*
-	if(isLeaf()) return bbox;
-	else
-	{
-		double dis = (Vec3f(x, y, z) - child[0]->getCenter()).Length();
-		double temp;
-		int j = 0;
-		for(int i = 1; i < 8; i++)
-		{
-			temp = (Vec3f(x, y, z) - child[i]->getCenter()).Length();
-			if(dis > temp) 
-			{
-				dis = temp;
-				j = i;
-			}
-		}
-		child[j]->getCell(x,y,z);
-	}
-	*/
 }
 
 BoundingBox * OCTree::getCell(double x, double y, double z)
@@ -276,25 +251,6 @@ BoundingBox * OCTree::getCell(double x, double y, double z)
 			}
 		} 
 	}
-	/*
-	if(isLeaf()) return bbox;
-	else
-	{
-		double dis = (Vec3f(x, y, z) - child[0]->getCenter()).Length();
-		double temp;
-		int j = 0;
-		for(int i = 1; i < 8; i++)
-		{
-			temp = (Vec3f(x, y, z) - child[i]->getCenter()).Length();
-			if(dis > temp) 
-			{
-				dis = temp;
-				j = i;
-			}
-		}
-		child[j]->getCell(x,y,z);
-	}
-	*/
 }
 // ==================================================================
 void OCTree::CollectParticlesInBox(const BoundingBox &bb, std::vector<SmokeParticle*> &particles) 
@@ -326,79 +282,86 @@ void OCTree::CollectParticlesInBox(const BoundingBox &bb, std::vector<SmokeParti
 	}
 }
 
-
 // ==================================================================
 void OCTree::SplitCell() {
 	const Vec3f& min = bbox->getMin();
 	const Vec3f& max = bbox->getMax();
 	const Vec3f c = split_center;
-	double dx = (max.x()-min.x() )/2;
-	double dy = (max.y()-min.y() )/2;
-	double dz = (max.z()-min.z() )/2;
+	double dx = (max.x()-min.x() )*0.5;
+	double dy = (max.y()-min.y() )*0.5;
+	double dz = (max.z()-min.z() )*0.5;
 	// split this cell around the center
 	// Bottom 4 quadrants
 	BoundingBox * b = new BoundingBox(min, c);
 	child[0] = new OCTree(b, depth+1);
-	child[0]->getCell()->set_u_plus(bbox->get_u_plus());
-	child[0]->getCell()->set_v_plus(bbox->get_v_plus());
-	child[0]->getCell()->set_w_plus(bbox->get_w_plus());
+	child[0]->getCell()->set_u_plus(bbox->get_u_plus()/8);
+	child[0]->getCell()->set_v_plus(bbox->get_v_plus()/8);
+	child[0]->getCell()->set_w_plus(bbox->get_w_plus()/8);
+	child[0]->getCell()->setPressure(bbox->getPressure()/8);
 
 	Vec3f min2 = Vec3f(min.x()+dx, min.y(), min.z());
 	Vec3f max2 = Vec3f(c.x()+dx, c.y(), c.z());
 	b = new BoundingBox(min2, max2);
 	child[1] = new OCTree(b, depth+1);
-	child[1]->getCell()->set_u_plus(bbox->get_u_plus());
-	child[1]->getCell()->set_v_plus(bbox->get_v_plus());
-	child[1]->getCell()->set_w_plus(bbox->get_w_plus());
+	child[1]->getCell()->set_u_plus(bbox->get_u_plus()/8);
+	child[1]->getCell()->set_v_plus(bbox->get_v_plus()/8);
+	child[1]->getCell()->set_w_plus(bbox->get_w_plus()/8);
+	child[1]->getCell()->setPressure(bbox->getPressure()/8);
 
 	min2 = Vec3f(min.x()+dx, min.y()+dy, min.z());
 	max2 = Vec3f(c.x()+dx, c.y()+dy, c.z());
 	b = new BoundingBox(min2, max2);
 	child[2] = new OCTree(b, depth+1);
-	child[2]->getCell()->set_u_plus(bbox->get_u_plus());
-	child[2]->getCell()->set_v_plus(bbox->get_v_plus());
-	child[2]->getCell()->set_w_plus(bbox->get_w_plus());
+	child[2]->getCell()->set_u_plus(bbox->get_u_plus()/8);
+	child[2]->getCell()->set_v_plus(bbox->get_v_plus()/8);
+	child[2]->getCell()->set_w_plus(bbox->get_w_plus()/8);
+	child[2]->getCell()->setPressure(bbox->getPressure()/8);
 
 	min2 = Vec3f(min.x(), min.y()+dy, min.z());
 	max2 = Vec3f(c.x(), c.y()+dy, c.z());
 	b = new BoundingBox(min2, max2);
 	child[3] = new OCTree(b, depth+1);
-	child[3]->getCell()->set_u_plus(bbox->get_u_plus());
-	child[3]->getCell()->set_v_plus(bbox->get_v_plus());
-	child[3]->getCell()->set_w_plus(bbox->get_w_plus());
+	child[3]->getCell()->set_u_plus(bbox->get_u_plus()/8);
+	child[3]->getCell()->set_v_plus(bbox->get_v_plus()/8);
+	child[3]->getCell()->set_w_plus(bbox->get_w_plus()/8);
+	child[3]->getCell()->setPressure(bbox->getPressure()/8);
 
 	// Top 4 quadrants
 	min2 = Vec3f(min.x(), min.y(), min.z() + dz);
 	max2 = Vec3f(c.x(), c.y(), c.z() + dz);
 	b = new BoundingBox(min2, max2);
 	child[4] = new OCTree(b, depth+1);
-	child[4]->getCell()->set_u_plus(bbox->get_u_plus());
-	child[4]->getCell()->set_v_plus(bbox->get_v_plus());
-	child[4]->getCell()->set_w_plus(bbox->get_w_plus());
+	child[4]->getCell()->set_u_plus(bbox->get_u_plus()/8);
+	child[4]->getCell()->set_v_plus(bbox->get_v_plus()/8);
+	child[4]->getCell()->set_w_plus(bbox->get_w_plus()/8);
+	child[4]->getCell()->setPressure(bbox->getPressure()/8);
 
 	min2 = Vec3f(min.x()+dx, min.y(), min.z()+dz);
 	max2 = Vec3f(c.x()+dx, c.y(), c.z()+dz);
 	b = new BoundingBox(min2, max2);
 	child[5] = new OCTree(b, depth+1);
-	child[5]->getCell()->set_u_plus(bbox->get_u_plus());
-	child[5]->getCell()->set_v_plus(bbox->get_v_plus());
-	child[5]->getCell()->set_w_plus(bbox->get_w_plus());
+	child[5]->getCell()->set_u_plus(bbox->get_u_plus()/8);
+	child[5]->getCell()->set_v_plus(bbox->get_v_plus()/8);
+	child[5]->getCell()->set_w_plus(bbox->get_w_plus()/8);
+	child[5]->getCell()->setPressure(bbox->getPressure()/8);
 
 	min2 = Vec3f(min.x()+dx, min.y()+dy, min.z()+dz);
 	max2 = Vec3f(c.x()+dx, c.y()+dy, c.z()+dz);
 	b = new BoundingBox(min2, max2);
 	child[6] = new OCTree(b, depth+1);
-	child[6]->getCell()->set_u_plus(bbox->get_u_plus());
-	child[6]->getCell()->set_v_plus(bbox->get_v_plus());
-	child[6]->getCell()->set_w_plus(bbox->get_w_plus());
+	child[6]->getCell()->set_u_plus(bbox->get_u_plus()/8);
+	child[6]->getCell()->set_v_plus(bbox->get_v_plus()/8);
+	child[6]->getCell()->set_w_plus(bbox->get_w_plus()/8);
+	child[6]->getCell()->setPressure(bbox->getPressure()/8);
 
 	min2 = Vec3f(min.x(), min.y()+dy, min.z()+dz);
 	max2 = Vec3f(c.x(), c.y()+dy, c.z()+dz);
 	b = new BoundingBox(min2, max2);
 	child[7] = new OCTree(b, depth+1);
-	child[7]->getCell()->set_u_plus(bbox->get_u_plus());
-	child[7]->getCell()->set_v_plus(bbox->get_v_plus());
-	child[7]->getCell()->set_w_plus(bbox->get_w_plus());
+	child[7]->getCell()->set_u_plus(bbox->get_u_plus()/8);
+	child[7]->getCell()->set_v_plus(bbox->get_v_plus()/8);
+	child[7]->getCell()->set_w_plus(bbox->get_w_plus()/8);
+	child[7]->getCell()->setPressure(bbox->getPressure()/8);
 
 	int num_particles = bbox->numParticles();
 	std::vector<SmokeParticle*> tmp = bbox->getParticles();
@@ -406,7 +369,7 @@ void OCTree::SplitCell() {
 	// add all the particless to one of those children
 	for (int i = 0; i < num_particles; i++) 
 	{
-		const SmokeParticle * p = tmp[i];
+		SmokeParticle * p = tmp[i];
 		this->AddParticle(p);
 	}
 }

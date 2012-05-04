@@ -67,6 +67,7 @@ void Smoke::Load() {
 	// Initialize our octree data structure
 	oc = new OCTree(bb, 0);
 	grid = new BoundingBox(min - Vec3f(1,1,1), max + Vec3f(1,1,1));
+	grid->set_u_plus(-1); grid->set_v_plus(-1); grid->set_w_plus(-1);
 
 	// simulation parameters
 	istr >> token >> token2;  assert (token=="flow");
@@ -95,12 +96,51 @@ void Smoke::Load() {
 	istr >> token >> token2;  assert (token=="initial_velocity");
 	if (token2 == "zero") 
 	{
-		// default is zero
+		std::vector<OCTree*> todo;  
+		todo.push_back(oc);
+		while (!todo.empty()) 
+		{
+			OCTree *node = todo.back();
+			todo.pop_back(); 
+			if (node->isLeaf()) {
+				BoundingBox* c = node->getCell();
+				c->set_u_plus(0);
+				c->set_v_plus(0);
+				c->set_w_plus(0);
+			} 
+			else 
+			{
+				// if this cell is not a leaf, explore both children
+				for(int i = 0; i < 8; i++) todo.push_back(node->getChild(i));
+			} 
+		}
 	} 
 	else 
 	{
-		/*
 		assert (token2 == "random");
+		std::vector<OCTree*> todo;  
+		todo.push_back(oc);
+		while (!todo.empty()) 
+		{
+			OCTree *node = todo.back();
+			todo.pop_back(); 
+			if (node->isLeaf()) {
+				BoundingBox* c = node->getCell();
+				double dx = c->getMax().x() - c->getMin().x();
+				double dy = c->getMax().y() - c->getMin().y();
+				double dz = c->getMax().z() - c->getMin().y();
+				double max_dim = my_max(dx,my_max(dy,dz));
+				c->set_u_plus((2*args->mtrand.rand()-1)*max_dim);
+				c->set_v_plus((2*args->mtrand.rand()-1)*max_dim);
+				c->set_w_plus((2*args->mtrand.rand()-1)*max_dim);
+			} 
+			else 
+			{
+				// if this cell is not a leaf, explore both children
+				for(int i = 0; i < 8; i++) todo.push_back(node->getChild(i));
+			} 
+		}
+		/*
 		int i,j,k;
 		double max_dim = my_max(dx,my_max(dy,dz));
 		for (i = -1; i <= nx; i++) 
@@ -149,6 +189,7 @@ void Smoke::Load() {
 		}
 		*/
 	}
+	//GenerateParticles("left","random");
 	SetBoundaryVelocities();
 }
 
@@ -241,6 +282,7 @@ void Smoke::Animate() {
   ComputeNewVelocities();
   SetBoundaryVelocities();
   
+  /*
   // compressible / incompressible flow
   if (compressible == false) {
     for (int iters = 0; iters < 20; iters++) {
@@ -249,7 +291,7 @@ void Smoke::Animate() {
       if (max_divergence < EPSILON) break;
     }
   }
-
+  */
   UpdatePressures();
   CopyVelocities();
 
@@ -277,28 +319,49 @@ void Smoke::ComputeNewVelocities() {
 		OCTree *node = todo.back();
 		todo.pop_back(); 
 		if (node->isLeaf()) {
-			//get_u_avg = 0.5*(get_u_plus(i-1,j,k)+get_u_plus(i,j,k)
-			//get_uv_plus = 0.5*(get_u_plus(i,j,k) + get_u_plus(i,j+1,k)) * 0.5*(get_v_plus(i,j,k) + get_v_plus(i+1,j,k));
 			Vec3f max = node->getCell()->getMax();
 			Vec3f min = node->getCell()->getMin();
-			BoundingBox * bb111 = node->getCell();															// i, j, k
-			BoundingBox * bb011 = oc->getCell(min.x() - 0.1, 0.5*(min.y()+max.y()), 0.5*(min.z()+max.z())); // i-1,j, k
-			BoundingBox * bb211 = oc->getCell(max.x() + 0.1, 0.5*(min.y()+max.y()), 0.5*(min.z()+max.z()));	// i+1,j, k
-			BoundingBox * bb101 = oc->getCell(0.5*(min.x()+max.x()), min.y() - 0.1, 0.5*(min.z()+max.z())); // i,j-1,k
-			BoundingBox * bb121 = oc->getCell(0.5*(min.x()+max.x()), max.y() + 0.1, 0.5*(min.z()+max.z()));	// i,j+1,k
-			BoundingBox * bb110 = oc->getCell(0.5*(min.x()+max.x()), 0.5*(min.y()+max.y()), min.z() - 0.1); // i,j,k-1
-			BoundingBox * bb112 = oc->getCell(0.5*(min.x()+max.x()), 0.5*(min.y()+max.y()), max.z() + 0.1);	// i,j,k+1
+			double dx = max.x() - min.x(); double dy = max.y() - min.y(); double dz = max.z() - min.z();
+			double i = 0.5*(min.x()+max.x()); double j = 0.5*(min.y()+max.y()); double k = 0.5*(min.z()+max.z());
+			double iplus = max.x() + 0.01; double jplus = max.y() + 0.01; double kplus = max.z() + 0.01;
+			double iminus = min.x() - 0.01; double jminus = min.y() - 0.01; double kminus = min.z() - 0.01;
+			double dx111, dx011, dx211, dx101, dx121, dx110, dx112;
+			double dy111, dy011, dy211, dy101, dy121, dy110, dy112;
+			double dz111, dz011, dz211, dz101, dz121, dz110, dz112;
+			BoundingBox * bb111 = node->getCell();				// i, j, k
+			dx111=bb111->getMax().x()-bb111->getMin().x(); dy111=bb111->getMax().y()-bb111->getMin().y(); dz111=bb111->getMax().z()-bb111->getMin().z();
+			BoundingBox * bb011 = oc->getCell(iminus, j, k);	// i-1,j, k
+			dx011=bb011->getMax().x()-bb011->getMin().x(); dy011=bb011->getMax().y()-bb011->getMin().y(); dz011=bb011->getMax().z()-bb011->getMin().z();
+			BoundingBox * bb211 = oc->getCell(iplus, j, k);		// i+1,j, k
+			dx211=bb211->getMax().x()-bb211->getMin().x(); dy211=bb211->getMax().y()-bb211->getMin().y(); dz211=bb211->getMax().z()-bb211->getMin().z();
+			BoundingBox * bb101 = oc->getCell(i, jminus, k);	// i,j-1,k
+			dx101=bb101->getMax().x()-bb101->getMin().x(); dy101=bb101->getMax().y()-bb101->getMin().y(); dz101=bb101->getMax().z()-bb101->getMin().z();
+			BoundingBox * bb121 = oc->getCell(i, jplus, k);		// i,j+1,k
+			dx121=bb121->getMax().x()-bb121->getMin().x(); dy121=bb121->getMax().y()-bb121->getMin().y(); dz121=bb121->getMax().z()-bb121->getMin().z();
+			BoundingBox * bb110 = oc->getCell(i, j, kminus);	// i,j,k-1
+			dx110=bb110->getMax().x()-bb110->getMin().x(); dy110=bb110->getMax().y()-bb110->getMin().y(); dz110=bb110->getMax().z()-bb110->getMin().z();
+			BoundingBox * bb112 = oc->getCell(i, j, kplus);		// i,j,k+1
+			dx112=bb112->getMax().x()-bb112->getMin().x(); dy112=bb112->getMax().y()-bb112->getMin().y(); dz112=bb112->getMax().z()-bb112->getMin().z();
+			if(iminus < oc->getCell()->getMin().x()) bb011 = grid; if(iplus > oc->getCell()->getMax().x()) bb211 = grid;
+			if(jminus < oc->getCell()->getMin().y()) bb101 = grid; if(jplus > oc->getCell()->getMax().y()) bb121 = grid;
+			if(kminus < oc->getCell()->getMin().z()) bb110 = grid; if(kplus > oc->getCell()->getMin().z()) bb112 = grid;
+
+			//get_u_avg = 0.5*(get_u_plus(i-1,j,k)+get_u_plus(i,j,k)
+			//get_uv_plus = 0.5*(get_u_plus(i,j,k) + get_u_plus(i,j+1,k)) * 0.5*(get_v_plus(i,j,k) + get_v_plus(i+1,j,k));
 			double new_u_plus = bb111->get_u_plus() + dt * 
-				((1/dx) * (square(0.5*(bb111->get_u_plus() + bb011->get_u_plus())) - square(0.5*(bb111->get_u_plus() + bb211->get_u_plus()))) +
-				(1/dy) * ( 0.5*(bb101->get_u_plus() + bb111->get_u_plus()) * 0.5*(bb101->get_v_plus() + bb111->get_v_plus())
-						 - 0.5*(bb111->get_u_plus() + bb121->get_u_plus()) * 0.5*(bb111->get_v_plus() + bb121->get_v_plus())) + 
-				(1/dz) * (0.5*(bb110->get_u_plus() + bb111->get_u_plus()) * 0.5*(bb110->get_w_plus() + bb111->get_w_plus())
-						 - 0.5*(bb111->get_u_plus() + bb112->get_u_plus()) * 0.5*(bb111->get_w_plus() + bb112->get_w_plus())) +
+				((1/dx) * (square(0.5*(bb011->get_u_plus()*(dx111/dx011) + bb111->get_u_plus())) - square(0.5*(bb111->get_u_plus() + bb211->get_u_plus()*(dx111/dx211)))) +
+				(1/dy) * ( 0.5*(bb101->get_u_plus()*(dx111/dx101) + bb111->get_u_plus()) * 0.5*(bb101->get_v_plus()*(dy111/dy101) + bb111->get_v_plus())
+						 - 0.5*(bb111->get_u_plus() + bb121->get_u_plus()*(dx111/dx121)) * 0.5*(bb111->get_v_plus() + bb121->get_v_plus()*(dy111/dy121))) + 
+				(1/dz) * (0.5*(bb110->get_u_plus()*(dx111/dx110) + bb111->get_u_plus()) * 0.5*(bb110->get_w_plus()*(dz111/dz110) + bb111->get_w_plus())
+						 - 0.5*(bb111->get_u_plus() + bb112->get_u_plus()*(dx111/dx112)) * 0.5*(bb111->get_w_plus() + bb112->get_w_plus()*(dz111/dz112))) +
 				args->gravity.x() +
-				(1/dx) * (bb111->getPressure()-bb211->getPressure()) +
-				(viscosity/square(dx)) * (bb211->get_u_plus() - 2*bb111->get_u_plus() + bb011->get_u_plus()) +
-				(viscosity/square(dy)) * (bb121->get_u_plus() - 2*bb111->get_u_plus() + bb101->get_u_plus()) +
-				(viscosity/square(dz)) * (bb112->get_u_plus() - 2*bb111->get_u_plus() + bb110->get_u_plus()) );
+				(1/dx) * (bb111->getPressure()-bb211->getPressure()*(dx111/dx211)) +
+				(viscosity/square(dx)) * (bb211->get_u_plus()*(dx111/dx211) - 2*bb111->get_u_plus() + bb011->get_u_plus()*(dx111/dx011)) +
+				(viscosity/square(dy)) * (bb121->get_u_plus()*(dx111/dx121) - 2*bb111->get_u_plus() + bb101->get_u_plus()*(dx111/dx101)) +
+				(viscosity/square(dz)) * (bb112->get_u_plus()*(dx111/dx112) - 2*bb111->get_u_plus() + bb110->get_u_plus()*(dx111/dx110)) );
+			//if(new_u_plus > 5) new_u_plus = 5.0;
+			//MTRand mt = MTRand();
+			//new_u_plus = 5*mt.rand();
 			bb111->set_new_u_plus(new_u_plus);
 		} 
 		else 
@@ -319,26 +382,44 @@ void Smoke::ComputeNewVelocities() {
 			//get_uv_plus = 0.5*(get_u_plus(i,j,k) + get_u_plus(i,j+1,k)) * 0.5*(get_v_plus(i,j,k) + get_v_plus(i+1,j,k));
 			Vec3f max = node->getCell()->getMax();
 			Vec3f min = node->getCell()->getMin();
-			BoundingBox * bb111 = node->getCell();															// i, j, k
-			BoundingBox * bb011 = oc->getCell(min.x() - 0.1, 0.5*(min.y()+max.y()), 0.5*(min.z()+max.z())); // i-1,j, k
-			BoundingBox * bb211 = oc->getCell(max.x() + 0.1, 0.5*(min.y()+max.y()), 0.5*(min.z()+max.z()));	// i+1,j, k
-			BoundingBox * bb101 = oc->getCell(0.5*(min.x()+max.x()), min.y() - 0.1, 0.5*(min.z()+max.z())); // i,j-1,k
-			BoundingBox * bb121 = oc->getCell(0.5*(min.x()+max.x()), max.y() + 0.1, 0.5*(min.z()+max.z()));	// i,j+1,k
-			BoundingBox * bb110 = oc->getCell(0.5*(min.x()+max.x()), 0.5*(min.y()+max.y()), min.z() - 0.1); // i,j,k-1
-			BoundingBox * bb112 = oc->getCell(0.5*(min.x()+max.x()), 0.5*(min.y()+max.y()), max.z() + 0.1);	// i,j,k+1
+			double dx = max.x() - min.x(); double dy = max.y() - min.y(); double dz = max.z() - min.z();
+			double i = 0.5*(min.x()+max.x()); double j = 0.5*(min.y()+max.y()); double k = 0.5*(min.z()+max.z());
+			double iplus = max.x() + 0.01; double jplus = max.y() + 0.01; double kplus = max.z() + 0.01;
+			double iminus = min.x() - 0.01; double jminus = min.y() - 0.01; double kminus = min.z() - 0.01;
+			double dx111, dx011, dx211, dx101, dx121, dx110, dx112;
+			double dy111, dy011, dy211, dy101, dy121, dy110, dy112;
+			double dz111, dz011, dz211, dz101, dz121, dz110, dz112;
+			BoundingBox * bb111 = node->getCell();				// i, j, k
+			dx111=bb111->getMax().x()-bb111->getMin().x(); dy111=bb111->getMax().y()-bb111->getMin().y(); dz111=bb111->getMax().z()-bb111->getMin().z();
+			BoundingBox * bb011 = oc->getCell(iminus, j, k);	// i-1,j, k
+			dx011=bb011->getMax().x()-bb011->getMin().x(); dy011=bb011->getMax().y()-bb011->getMin().y(); dz011=bb011->getMax().z()-bb011->getMin().z();
+			BoundingBox * bb211 = oc->getCell(iplus, j, k);		// i+1,j, k
+			dx211=bb211->getMax().x()-bb211->getMin().x(); dy211=bb211->getMax().y()-bb211->getMin().y(); dz211=bb211->getMax().z()-bb211->getMin().z();
+			BoundingBox * bb101 = oc->getCell(i, jminus, k);	// i,j-1,k
+			dx101=bb101->getMax().x()-bb101->getMin().x(); dy101=bb101->getMax().y()-bb101->getMin().y(); dz101=bb101->getMax().z()-bb101->getMin().z();
+			BoundingBox * bb121 = oc->getCell(i, jplus, k);		// i,j+1,k
+			dx121=bb121->getMax().x()-bb121->getMin().x(); dy121=bb121->getMax().y()-bb121->getMin().y(); dz121=bb121->getMax().z()-bb121->getMin().z();
+			BoundingBox * bb110 = oc->getCell(i, j, kminus);	// i,j,k-1
+			dx110=bb110->getMax().x()-bb110->getMin().x(); dy110=bb110->getMax().y()-bb110->getMin().y(); dz110=bb110->getMax().z()-bb110->getMin().z();
+			BoundingBox * bb112 = oc->getCell(i, j, kplus);		// i,j,k+1
+			dx112=bb112->getMax().x()-bb112->getMin().x(); dy112=bb112->getMax().y()-bb112->getMin().y(); dz112=bb112->getMax().z()-bb112->getMin().z();
+			if(iminus < oc->getCell()->getMin().x()) bb011 = grid; if(iplus > oc->getCell()->getMax().x()) bb211 = grid;
+			if(jminus < oc->getCell()->getMin().y()) bb101 = grid; if(jplus > oc->getCell()->getMax().y()) bb121 = grid;
+			if(kminus < oc->getCell()->getMin().z()) bb110 = grid; if(kplus > oc->getCell()->getMin().z()) bb112 = grid;
 
 			double new_v_plus = bb111->get_v_plus() + dt * 
-				((1/dx) * (0.5*(bb011->get_u_plus() + bb111->get_u_plus()) * 0.5*(bb011->get_v_plus() + bb111->get_v_plus())
-						 - 0.5*(bb111->get_u_plus() + bb211->get_u_plus()) * 0.5*(bb111->get_v_plus() + bb211->get_v_plus())) +
-                (1/dy) * (square(0.5*(bb111->get_v_plus() + bb101->get_v_plus())) - square(0.5*(bb111->get_v_plus() + bb121->get_v_plus()))) +
-                (1/dz) * (0.5*(bb110->get_v_plus() + bb111->get_v_plus()) * 0.5*(bb110->get_w_plus() + bb111->get_w_plus())
-						- 0.5*(bb111->get_v_plus() + bb112->get_v_plus()) * 0.5*(bb111->get_w_plus() + bb112->get_w_plus())) +
+				((1/dx) * (0.5*(bb011->get_u_plus()*(dx111/dx011) + bb111->get_u_plus()) * 0.5*(bb011->get_v_plus()*(dy111/dy011) + bb111->get_v_plus())
+						 - 0.5*(bb111->get_u_plus() + bb211->get_u_plus()*(dx111/dx211)) * 0.5*(bb111->get_v_plus() + bb211->get_v_plus()*(dx111/dx211))) +
+                (1/dy) * (square(0.5*(bb111->get_v_plus() + bb101->get_v_plus()*(dy111/dy101))) - square(0.5*(bb111->get_v_plus() + bb121->get_v_plus()*(dy111/dy121)))) +
+                (1/dz) * (0.5*(bb110->get_v_plus()*(dy111/dy110) + bb111->get_v_plus()) * 0.5*(bb110->get_w_plus()*(dz111/dz110) + bb111->get_w_plus())
+						- 0.5*(bb111->get_v_plus() + bb112->get_v_plus()*(dy111/dy112)) * 0.5*(bb111->get_w_plus() + bb112->get_w_plus()*(dz111/dz112))) +
                 args->gravity.y() +
-                (1/dy) * (bb111->getPressure()-bb121->getPressure()) +
-                (viscosity/square(dx)) * (bb211->get_v_plus() - 2*bb111->get_v_plus() + bb011->get_v_plus()) +
-                (viscosity/square(dy)) * (bb121->get_v_plus() - 2*bb111->get_v_plus() + bb101->get_v_plus()) +
-                (viscosity/square(dz)) * (bb112->get_v_plus() - 2*bb111->get_v_plus() + bb110->get_v_plus()) );
+                (1/dy) * (bb111->getPressure()-bb121->getPressure()*(dy111/dy121)) +
+                (viscosity/square(dx)) * (bb211->get_v_plus()*(dy111/dy211) - 2*bb111->get_v_plus() + bb011->get_v_plus()*(dy111/dy011)) +
+                (viscosity/square(dy)) * (bb121->get_v_plus()*(dy111/dy121) - 2*bb111->get_v_plus() + bb101->get_v_plus()*(dy111/dy101)) +
+                (viscosity/square(dz)) * (bb112->get_v_plus()*(dy111/dy112) - 2*bb111->get_v_plus() + bb110->get_v_plus()*(dy111/dy110)) );
 			bb111->set_new_v_plus(new_v_plus);
+			//bb111->set_new_v_plus(0);
 		} 
 		else 
 		{
@@ -358,26 +439,44 @@ void Smoke::ComputeNewVelocities() {
 			//get_uv_plus = 0.5*(get_u_plus(i,j,k) + get_u_plus(i,j+1,k)) * 0.5*(get_v_plus(i,j,k) + get_v_plus(i+1,j,k));
 			Vec3f max = node->getCell()->getMax();
 			Vec3f min = node->getCell()->getMin();
-			BoundingBox * bb111 = node->getCell();															// i, j, k
-			BoundingBox * bb011 = oc->getCell(min.x() - 0.1, 0.5*(min.y()+max.y()), 0.5*(min.z()+max.z())); // i-1,j, k
-			BoundingBox * bb211 = oc->getCell(max.x() + 0.1, 0.5*(min.y()+max.y()), 0.5*(min.z()+max.z()));	// i+1,j, k
-			BoundingBox * bb101 = oc->getCell(0.5*(min.x()+max.x()), min.y() - 0.1, 0.5*(min.z()+max.z())); // i,j-1,k
-			BoundingBox * bb121 = oc->getCell(0.5*(min.x()+max.x()), max.y() + 0.1, 0.5*(min.z()+max.z()));	// i,j+1,k
-			BoundingBox * bb110 = oc->getCell(0.5*(min.x()+max.x()), 0.5*(min.y()+max.y()), min.z() - 0.1); // i,j,k-1
-			BoundingBox * bb112 = oc->getCell(0.5*(min.x()+max.x()), 0.5*(min.y()+max.y()), max.z() + 0.1);	// i,j,k+1
+			double dx = max.x() - min.x(); double dy = max.y() - min.y(); double dz = max.z() - min.z();
+			double i = 0.5*(min.x()+max.x()); double j = 0.5*(min.y()+max.y()); double k = 0.5*(min.z()+max.z());
+			double iplus = max.x() + 0.01; double jplus = max.y() + 0.01; double kplus = max.z() + 0.01;
+			double iminus = min.x() - 0.01; double jminus = min.y() - 0.01; double kminus = min.z() - 0.01;
+			double dx111, dx011, dx211, dx101, dx121, dx110, dx112;
+			double dy111, dy011, dy211, dy101, dy121, dy110, dy112;
+			double dz111, dz011, dz211, dz101, dz121, dz110, dz112;
+			BoundingBox * bb111 = node->getCell();				// i, j, k
+			dx111=bb111->getMax().x()-bb111->getMin().x(); dy111=bb111->getMax().y()-bb111->getMin().y(); dz111=bb111->getMax().z()-bb111->getMin().z();
+			BoundingBox * bb011 = oc->getCell(iminus, j, k);	// i-1,j, k
+			dx011=bb011->getMax().x()-bb011->getMin().x(); dy011=bb011->getMax().y()-bb011->getMin().y(); dz011=bb011->getMax().z()-bb011->getMin().z();
+			BoundingBox * bb211 = oc->getCell(iplus, j, k);		// i+1,j, k
+			dx211=bb211->getMax().x()-bb211->getMin().x(); dy211=bb211->getMax().y()-bb211->getMin().y(); dz211=bb211->getMax().z()-bb211->getMin().z();
+			BoundingBox * bb101 = oc->getCell(i, jminus, k);	// i,j-1,k
+			dx101=bb101->getMax().x()-bb101->getMin().x(); dy101=bb101->getMax().y()-bb101->getMin().y(); dz101=bb101->getMax().z()-bb101->getMin().z();
+			BoundingBox * bb121 = oc->getCell(i, jplus, k);		// i,j+1,k
+			dx121=bb121->getMax().x()-bb121->getMin().x(); dy121=bb121->getMax().y()-bb121->getMin().y(); dz121=bb121->getMax().z()-bb121->getMin().z();
+			BoundingBox * bb110 = oc->getCell(i, j, kminus);	// i,j,k-1
+			dx110=bb110->getMax().x()-bb110->getMin().x(); dy110=bb110->getMax().y()-bb110->getMin().y(); dz110=bb110->getMax().z()-bb110->getMin().z();
+			BoundingBox * bb112 = oc->getCell(i, j, kplus);		// i,j,k+1
+			dx112=bb112->getMax().x()-bb112->getMin().x(); dy112=bb112->getMax().y()-bb112->getMin().y(); dz112=bb112->getMax().z()-bb112->getMin().z();
+			if(iminus < oc->getCell()->getMin().x()) bb011 = grid; if(iplus > oc->getCell()->getMax().x()) bb211 = grid;
+			if(jminus < oc->getCell()->getMin().y()) bb101 = grid; if(jplus > oc->getCell()->getMax().y()) bb121 = grid;
+			if(kminus < oc->getCell()->getMin().z()) bb110 = grid; if(kplus > oc->getCell()->getMin().z()) bb112 = grid;
 
 			double new_w_plus = bb111->get_w_plus() + dt * 
-				((1/dx) * (0.5*(bb011->get_u_plus() + bb111->get_u_plus()) * 0.5*(bb011->get_w_plus() + bb111->get_w_plus())
-						 - 0.5*(bb111->get_u_plus() + bb211->get_u_plus()) * 0.5*(bb111->get_w_plus() + bb211->get_w_plus())) +
-                (1/dy) * ( 0.5*(bb101->get_v_plus() + bb111->get_v_plus()) * 0.5*(bb101->get_w_plus() + bb111->get_w_plus())
-						 - 0.5*(bb111->get_v_plus() + bb121->get_v_plus()) * 0.5*(bb111->get_w_plus() + bb121->get_w_plus())) + 
-                (1/dz) * (square(0.5*(bb111->get_w_plus() + bb110->get_w_plus())) - square(0.5*(bb111->get_w_plus() + bb112->get_w_plus()))) +
+				((1/dx) * (0.5*(bb011->get_u_plus()*(dx111/dx011) + bb111->get_u_plus()) * 0.5*(bb011->get_w_plus()*(dz111/dz011) + bb111->get_w_plus())
+						 - 0.5*(bb111->get_u_plus() + bb211->get_u_plus()*(dx111/dx211)) * 0.5*(bb111->get_w_plus() + bb211->get_w_plus()*(dz111/dz211))) +
+                (1/dy) * ( 0.5*(bb101->get_v_plus()*(dy111/dy101) + bb111->get_v_plus()) * 0.5*(bb101->get_w_plus()*(dz111/dz101) + bb111->get_w_plus())
+						 - 0.5*(bb111->get_v_plus() + bb121->get_v_plus()*(dy111/dy121)) * 0.5*(bb111->get_w_plus() + bb121->get_w_plus()*(dz111/dz121))) + 
+                (1/dz) * (square(0.5*(bb111->get_w_plus() + bb110->get_w_plus()*(dz111/dz110))) - square(0.5*(bb111->get_w_plus() + bb112->get_w_plus()*(dz111/dz112)))) +
                 args->gravity.z() +
-                (1/dz) * (bb111->getPressure()-bb112->getPressure()) +
-                (viscosity/square(dx)) * (bb211->get_w_plus() - 2*bb111->get_w_plus() + bb011->get_w_plus()) +
-                (viscosity/square(dy)) * (bb121->get_w_plus() - 2*bb111->get_w_plus() + bb101->get_w_plus()) +
-                (viscosity/square(dz)) * (bb112->get_w_plus() - 2*bb111->get_w_plus() + bb110->get_w_plus()) );
+                (1/dz) * (bb111->getPressure()-bb112->getPressure()*(dz111/dz112)) +
+                (viscosity/square(dx)) * (bb211->get_w_plus()*(dz111/dz211) - 2*bb111->get_w_plus() + bb011->get_w_plus()*(dz111/dz011)) +
+                (viscosity/square(dy)) * (bb121->get_w_plus()*(dz111/dz121) - 2*bb111->get_w_plus() + bb101->get_w_plus()*(dz111/dz101)) +
+                (viscosity/square(dz)) * (bb112->get_w_plus()*(dz111/dz112) - 2*bb111->get_w_plus() + bb110->get_w_plus()*(dz111/dz110)) );
 			bb111->set_new_w_plus(new_w_plus);
+			//bb111->set_new_w_plus(0);
 		} 
 		else 
 		{
@@ -385,7 +484,6 @@ void Smoke::ComputeNewVelocities() {
 			for(int i = 0; i < 8; i++) todo.push_back(node->getChild(i));
 		}
 	}
-
   /*
   for (i = 0; i < nx-1; i++) {
     for (j = 0; j < ny; j++) {
@@ -502,9 +600,9 @@ void Smoke::EmptyVelocities(BoundingBox *c) {
   // NEED TO IMPLEMENT
   if (c->getStatus() != CELL_EMPTY) return;
   Vec3f max = c->getMax();
-  BoundingBox *ciplus = oc->getCell(max.x() + 0.01, max.y(), max.z());
-  BoundingBox *cjplus = oc->getCell(max.x(), max.y() + 0.01, max.z());
-  BoundingBox *ckplus = oc->getCell(max.x(), max.y(), max.z() + 0.01);
+  BoundingBox *ciplus = oc->getCell(max.x() + EPSILON, max.y(), max.z());
+  BoundingBox *cjplus = oc->getCell(max.x(), max.y() + EPSILON, max.z());
+  BoundingBox *ckplus = oc->getCell(max.x(), max.y(), max.z() + EPSILON);
   if (ciplus->getStatus() == CELL_EMPTY)
     c->set_new_u_plus(0);
   if (cjplus->getStatus() == CELL_EMPTY)
@@ -529,13 +627,13 @@ void Smoke::CopyVelocities() {
 			double dx = c->getMax().x() - c->getMin().x();
 			double dy = c->getMax().y() - c->getMin().y();
 			double dz = c->getMax().z() - c->getMin().z();
-			/*if (fabs(c->get_u_plus()) > 0.5*dx/dt ||
+			if (fabs(c->get_u_plus()) > 0.5*dx/dt ||
 				fabs(c->get_v_plus()) > 0.5*dy/dt ||
 				fabs(c->get_w_plus()) > 0.5*dz/dt) {
 				// velocity has exceeded reasonable threshhold
 				std::cout << "velocity has exceeded reasonable threshhold, stopping animation" << std::endl;
 				args->animate=false;
-			}*/
+			}
 		} 
 		else 
 		{
@@ -543,25 +641,6 @@ void Smoke::CopyVelocities() {
 			for(int i = 0; i < 8; i++) todo.push_back(node->getChild(i));
 		}
 	}
-	/*
-  double dt = args->timestep;
-  for (int i = 0; i < nx; i++) {
-    for (int j = 0; j < ny; j++) {
-      for (int k = 0; k < nz; k++) {
-	BoundingBox *c = getBoundingBox(i,j,k);
-	EmptyVelocities(i,j,k);
-	c->copyVelocity();
-	if (fabs(c->get_u_plus()) > 0.5*dx/dt ||
-	    fabs(c->get_v_plus()) > 0.5*dy/dt ||
-	    fabs(c->get_w_plus()) > 0.5*dz/dt) {
-	  // velocity has exceeded reasonable threshhold
-	  std::cout << "velocity has exceeded reasonable threshhold, stopping animation" << std::endl;
-	  args->animate=false;
-	}
-      }
-    }
-  }
-  */
 }
 
 // ==============================================================
@@ -699,6 +778,50 @@ double Smoke::AdjustForIncompressibility() {
 
 void Smoke::UpdatePressures() {
 	// NEED TO IMPLEMENT
+	std::vector<OCTree*> todo;  
+	todo.push_back(oc);
+
+	while (!todo.empty()) 
+	{
+		OCTree *node = todo.back();
+		todo.pop_back(); 
+		if (node->isLeaf()) {
+			if (node->getCell()->getStatus() == CELL_EMPTY) 
+			{
+			  node->getCell()->setPressure(0);
+			}
+			else
+			{
+				BoundingBox *c = node->getCell();
+				Vec3f max = c->getMax();
+				Vec3f min = c->getMin();
+				BoundingBox *im = oc->getCell(min.x()-EPSILON, 0.5*(max.y()+min.y()), 0.5*(max.z()+min.z()));
+				BoundingBox *jm = oc->getCell(0.5*(max.x()+min.x()), min.y()-EPSILON, 0.5*(max.z()+min.z()));
+				BoundingBox *km = oc->getCell(0.5*(max.x()+min.x()), 0.5*(max.y()+min.y()), min.z()-EPSILON);
+				if(min.x()-EPSILON < oc->getCell()->getMin().x()) im = grid;
+				if(min.y()-EPSILON < oc->getCell()->getMin().y()) jm = grid;
+				if(min.z()-EPSILON < oc->getCell()->getMin().z()) km = grid;
+				double dx = max.x() - min.x(); double dy = max.y() - min.y(); double dz = max.z() - min.z();
+				double dxim = im->getMax().x()-im->getMin().x(); double dyjm = jm->getMax().y()-jm->getMin().y();
+				double dzkm = km->getMax().z()-km->getMin().z();
+				double pressure = c->getPressure();
+				double divergence = 
+					-( (1/dx) * (c->get_new_u_plus() - im->get_new_u_plus()*(dx/dxim)) +
+					(1/dy) * (c->get_new_v_plus() - jm->get_new_v_plus()*(dy/dyjm)) +
+					(1/dz) * (c->get_new_w_plus() - km->get_new_w_plus()*(dz/dzkm)) );
+				double dt = args->timestep;
+				double beta = BETA_0/((2*dt) * (1/square(dx) + 1/square(dy) + 1/square(dz)));
+				double dp = beta*divergence;
+				c->setPressure(pressure + dp);
+				grid->setPressure(0);
+			}
+		} 
+		else 
+		{
+			// if this cell is not a leaf, explore all children
+			for(int i = 0; i < 8; i++) todo.push_back(node->getChild(i));
+		}
+	}
 	/*
   for (int i = -1; i <= nx; i++) {
     for (int j = -1; j <= ny; j++) {
@@ -735,26 +858,6 @@ void Smoke::UpdatePressures() {
 // ==============================================================
 
 void Smoke::MoveParticles() {
-	// NEED TO IMPLEMENT
-	/*
-  double dt = args->timestep;
-  for (int i = 0; i < nx; i++) {
-    for (int j = 0; j < ny; j++) {
-      for (int k = 0; k < nz; k++) {
-        BoundingBox *cell = getBoundingBox(i,j,k);
-	std::vector<SmokeParticle*> &particles = cell->getParticles();
-        for (unsigned int iter = 0; iter < particles.size(); iter++) {
-          SmokeParticle *p = particles[iter];
-          Vec3f pos = p->getPosition();
-          Vec3f vel = getInterpolatedVelocity(pos);
-          Vec3f pos2 = pos + vel*dt;
-          // euler integration
-          p->setPosition(pos2);
-        }
-      }
-    }
-  }
-  */
 	double dt = args->timestep;
 	std::vector<OCTree*> todo;  
 	todo.push_back(oc);
@@ -771,7 +874,14 @@ void Smoke::MoveParticles() {
 				Vec3f pos2 = pos + vel*dt;
 				// euler integration
 				p->setPosition(pos2);
-				if (!oc->ParticleInCell(p)) p->setPosition(pos);
+				/*
+				if (!oc->ParticleInCell(p)) 
+				{
+					Vec3f pos = Vec3f(0.5*args->mtrand.rand(), 0.5 + args->mtrand.rand(ny-1), 0.5 + args->mtrand.rand(nz-1));
+					p->setPosition(pos);
+				}
+				*/
+				//if (!oc->ParticleInCell(p)) p->setPosition(pos-vel*dt);
 			}
 		} 
 		else 
@@ -785,7 +895,6 @@ void Smoke::MoveParticles() {
 // ==============================================================
 
 void Smoke::ReassignParticles() {
-	// NEED TO IMPLEMENT
 	std::vector<OCTree*> todo;  
 	todo.push_back(oc);
 	while (!todo.empty()) 
@@ -814,49 +923,31 @@ void Smoke::ReassignParticles() {
 		}
 	}
 	oc->cleanupTree();
-	/*
-  for (int i = 0; i < nx; i++) {
-    for (int j = 0; j < ny; j++) {
-      for (int k = 0; k < nz; k++) {
-        BoundingBox *cell = getBoundingBox(i,j,k);
-	std::vector<SmokeParticle*> &particles = cell->getParticles();
-        for (unsigned int iter = 0; iter < particles.size(); iter++) {
-          SmokeParticle *p = particles[iter];
-          Vec3f pos = p->getPosition();
-          int i2 = (int)my_min(double(nx-1),my_max(0.0,floor(pos.x()/dx)));
-          int j2 = (int)my_min(double(ny-1),my_max(0.0,floor(pos.y()/dy)));
-          int k2 = (int)my_min(double(nz-1),my_max(0.0,floor(pos.z()/dz)));
-          // if the particle has crossed one of the cell faces 
-          // assign it to the new cell
-          if (i != i2 || j != j2 || k != k2) {
-            cell->removeParticle(p);
-            getBoundingBox(i2,j2,k2)->addParticle(p);
-          } 
-        }
-      }
-    }
-  }
-  */
 }
 
 // ==============================================================
 
 void Smoke::SetEmptySurfaceFull() {
 	// NEED TO IMPLEMENT
+	std::vector<OCTree*> todo;  
+	todo.push_back(oc);
+	while (!todo.empty()) 
+	{
+		OCTree *node = todo.back();
+		todo.pop_back(); 
+		if (node->isLeaf()) 
+		{
+			BoundingBox * cell = node->getCell();
+			if(cell->numParticles() == 0)	cell->setStatus(CELL_EMPTY);
+			else							cell->setStatus(CELL_FULL);
+		} 
+		else 
+		{
+			// if this cell is not a leaf, explore all children
+			for(int i = 0; i < 8; i++) todo.push_back(node->getChild(i));
+		}
+	}
 	/*
-  int i,j,k;
-  for (i = 0; i < nx; i++) {
-    for (j = 0; j < ny; j++) {
-      for (k = 0; k < nz; k++) {
-        BoundingBox *cell = getBoundingBox(i,j,k);
-        if (cell->numParticles() == 0)
-          cell->setStatus(CELL_EMPTY);
-        else 
-          cell->setStatus(CELL_FULL);
-      }
-    }
-  }
-
   // pick out the boundary cells
   for (i = 0; i < nx; i++) {
     for (j = 0; j < ny; j++) {
@@ -881,472 +972,136 @@ void Smoke::SetEmptySurfaceFull() {
 
 Vec3f Smoke::getInterpolatedVelocity(const Vec3f &pos) const 
 {
-	BoundingBox * bb111 = oc->getCell(pos);															// i  ,j  ,k
-	Vec3f max = bb111->getMax();
-	Vec3f min = bb111->getMin();
-
-	// 9 Cells under
-	BoundingBox * bb020 = oc->getCell(Vec3f(min.x() - 0.1, max.y() + 0.1, min.z() - 0.1));					// i-1,j+1,k-1
-	BoundingBox * bb120 = oc->getCell(Vec3f(0.5*(max.x()+min.x()), max.y() + 0.1, min.z() - 0.1));			// i  ,j+1,k-1
-	BoundingBox * bb220 = oc->getCell(Vec3f(max.x() + 0.1, max.y() + 0.1, min.z() - 0.1));					// i+1,j+1,k-1
-
-	BoundingBox * bb010 = oc->getCell(Vec3f(min.x() - 0.1, 0.5*(max.y()+min.y()), min.z() - 0.1));			// i-1,j,k-1
-	BoundingBox * bb110 = oc->getCell(Vec3f(0.5*(max.x()+min.x()), 0.5*(max.y()+min.y()), min.z() - 0.1));	// i  ,j,k-1
-	BoundingBox * bb210 = oc->getCell(Vec3f(max.x() + 0.1, 0.5*(max.y()+min.y()), min.z() - 0.1));			// i+1,j,k-1
-
-	BoundingBox * bb000 = oc->getCell(Vec3f(min.x() - 0.1, min.y() - 0.1, min.z() - 0.1));					// i-1,j-1,k-1	
-	BoundingBox * bb100 = oc->getCell(Vec3f(0.5*(min.x()+max.x()), min.y() - 0.1, min.z() - 0.1));			// i  ,j-1,k-1
-	BoundingBox * bb200 = oc->getCell(Vec3f(max.x() + 0.1, min.y() - 0.1, min.z() - 0.1));					// i+1,j-1,k-1
-
-	// 8 Cells surrounding
-	BoundingBox * bb021 = oc->getCell(Vec3f(min.x() - 0.1, max.y() + 0.1, 0.5*(min.z()+max.z())));			// i-1,j+1,k
-	BoundingBox * bb121 = oc->getCell(Vec3f(0.5*(min.x()+max.x()), max.y() + 0.1, 0.5*(min.z()+max.z())));	// i  ,j+1,k
-	BoundingBox * bb221 = oc->getCell(Vec3f(max.x() + 0.1, max.y() + 0.1, 0.5*(min.z()+max.z())));			// i+1,j+1,k
-
-	BoundingBox * bb011 = oc->getCell(Vec3f(min.x() - 0.1, 0.5*(min.y()+max.y()), 0.5*(min.z()+max.z()))); // i-1,j  ,k
-	//			  bb111																						// i  ,j  ,k
-	BoundingBox * bb211 = oc->getCell(Vec3f(max.x() + 0.1, 0.5*(min.y()+max.y()), 0.5*(min.z()+max.z())));	// i+1,j  ,k
-	
-	BoundingBox * bb001 = oc->getCell(Vec3f(min.x() - 0.1, min.y() - 0.1, 0.5*(min.z()+max.z())));			// i-1,j-1,k
-	BoundingBox * bb101 = oc->getCell(Vec3f(0.5*(min.x()+max.x()), min.y() - 0.1, 0.5*(min.z()+max.z()))); // i  ,j-1,k
-	BoundingBox * bb201 = oc->getCell(Vec3f(max.x() + 0.1, min.y() - 0.1, 0.5*(min.z()+max.z())));			// i+1,j-1,k
-	
-	// 9 Cells above
-	BoundingBox * bb022 = oc->getCell(Vec3f(min.x() - 0.1, max.y() + 0.1, max.z() + 0.1));					// i-1,j+1,k+1
-	BoundingBox * bb122 = oc->getCell(Vec3f(0.5*(max.x() + min.x()), max.y() + 0.1, max.z() + 0.1));		// i  ,j+1,k+1
-	BoundingBox * bb222 = oc->getCell(Vec3f(max.x() + 0.1, max.y() + 0.1, max.z() + 0.1));					// i+1,j+1,k+1
-
-	BoundingBox * bb012 = oc->getCell(Vec3f(min.x() - 0.1, 0.5*(max.y()+min.y()), max.z() + 0.1));			// i-1,j  ,k+1
-	BoundingBox * bb112 = oc->getCell(Vec3f(0.5*(min.x()+max.x()), 0.5*(min.y()+max.y()), max.z() + 0.1));	// i  ,j  ,k+1
-	BoundingBox * bb212 = oc->getCell(Vec3f(max.x() + 0.1, 0.5*(min.y()+max.y()), max.z() + 0.1));			// i+1,j  ,k+1
-
-	BoundingBox * bb002 = oc->getCell(Vec3f(min.x() - 0.1, min.y() - 0.1, max.z() + 0.1));					// i-1,j-1,k+1
-	BoundingBox * bb102 = oc->getCell(Vec3f(0.5*(max.x()+min.x()), min.y() - 0.1, max.z() + 0.1));			// i  ,j-1,k+1
-	BoundingBox * bb202 = oc->getCell(Vec3f(max.x() + 0.1, min.y() - 0.1, max.z() + 0.1));					// i+1,j-1,k+1
-	
-	double dx = bb111->getMax().x() - bb111->getMin().x();
-	double dy = bb111->getMax().y() - bb111->getMin().y();
-	double dz = bb111->getMax().z() - bb111->getMin().z();
-
-	
-	double u[8],v[8],w[8];
-	double au[8],av[8],aw[8];
-	Vec3f average;
-	double xWeight, yWeight, zWeight;     
-	
-	// Calculate the U velocity (x direction)
-	if (pos.x() > bb111->getMin().x() + 0.5*dx)			// i+1
+	double u[8],v[8],w[8];		double au[8],av[8],aw[8];
+	Vec3f average, max, min;	double dx, dy, dz;
+	double i, ip, im, j, jp, jm, k, kp, km;
+	BoundingBox * cell[8]; cell[0] = oc->getCell(pos);
+	max = cell[0]->getMax(); min = cell[0]->getMin();
+	dx = max.x()-min.x(); dy = max.y()-min.y(); dz = max.z()-min.z();
+	i = 0.5*(max.x()+min.x()); ip = max.x() + EPSILON; im = min.x() - EPSILON;
+	j = 0.5*(max.y()+min.y()); jp = max.y() + EPSILON; jm = min.y() - EPSILON;
+	k = 0.5*(max.z()+min.z()); kp = max.z() + EPSILON; km = min.z() - EPSILON;
+	if(ip > oc->getMax().x()) ip = im; if(jp > oc->getMax().y()) jp = jm; if(kp > oc->getMax().z()) kp = km;
+	if(im < oc->getMin().x()) im = ip; if(jm < oc->getMin().y()) jm = jp; if(km < oc->getMax().z()) km = kp;
+	if(pos.x() < min.x() + 0.5*dx)
 	{
-		if(pos.y() > bb111->getMin().y() + 0.5*dy)		// j+1
+		if(pos.y() < min.y() + 0.5*dy)
 		{
-			if(pos.z() > bb111->getMin().z() + 0.5*dz)	// k+1
+			if(pos.z() < min.z() + 0.5*dz)
 			{
-				u[0] = bb111->get_u_plus();		// get_u_plus(i,j,k);
-				u[1] = bb211->get_u_plus();		// get_u_plus(i + 1,j,k);
-				u[2] = bb121->get_u_plus();		// get_u_plus(i,j + 1,k);
-				u[3] = bb221->get_u_plus();		// get_u_plus(i+1,j + 1,k); 
-				u[4] = bb112->get_u_plus();		// get_u_plus(i,j,k+1);
-				u[5] = bb212->get_u_plus();		// get_u_plus(i+1,j,k+1);
-				u[6] = bb122->get_u_plus();		// get_u_plus(i,j+1,k+1);
-				u[7] = bb222->get_u_plus();		// get_u_plus(i+1,j+1,k+1);
-				au[0] = (1 - ((bb111->getMax().x() - pos.x())/dx)) * (1 - ((bb111->getMax().y()-pos.y())/dy))*(1 - ((bb111->getMax().z() - pos.z())/dz));
-				dx = bb211->getMax().x() - bb211->getMin().x(); dy = bb211->getMax().y() - bb211->getMin().y(); dz = bb211->getMax().z() - bb211->getMin().z();
-				au[1] = (1 - ((bb211->getMax().x() - pos.x())/dx)) * (1 - ((bb211->getMax().y()-pos.y())/dy))*(1 - ((bb211->getMax().z() - pos.z())/dz));
-				dx = bb121->getMax().x() - bb121->getMin().x(); dy = bb121->getMax().y() - bb121->getMin().y(); dz = bb121->getMax().z() - bb121->getMin().z();
-				au[2] = (1 - ((bb121->getMax().x() - pos.x())/dx)) * (1 - ((bb121->getMax().y()-pos.y())/dy))*(1 - ((bb121->getMax().z() - pos.z())/dz));
-				dx = bb221->getMax().x() - bb221->getMin().x(); dy = bb221->getMax().y() - bb221->getMin().y(); dz = bb221->getMax().z() - bb221->getMin().z();
-				au[3] = (1 - ((bb221->getMax().x() - pos.x())/dx)) * (1 - ((bb221->getMax().y()-pos.y())/dy))*(1 - ((bb221->getMax().z() - pos.z())/dz));
-				dx = bb112->getMax().x() - bb112->getMin().x(); dy = bb112->getMax().y() - bb112->getMin().y(); dz = bb112->getMax().z() - bb112->getMin().z();
-				au[4] = (1 - ((bb112->getMax().x() - pos.x())/dx)) * (1 - ((bb112->getMax().y()-pos.y())/dy))*(1 - ((bb112->getMax().z() - pos.z())/dz));
-				dx = bb212->getMax().x() - bb212->getMin().x(); dy = bb212->getMax().y() - bb212->getMin().y(); dz = bb212->getMax().z() - bb212->getMin().z();
-				au[5] = (1 - ((bb212->getMax().x() - pos.x())/dx)) * (1 - ((bb212->getMax().y()-pos.y())/dy))*(1 - ((bb212->getMax().z() - pos.z())/dz));
-				dx = bb122->getMax().x() - bb122->getMin().x(); dy = bb122->getMax().y() - bb122->getMin().y(); dz = bb122->getMax().z() - bb122->getMin().z();
-				au[6] = (1 - ((bb122->getMax().x() - pos.x())/dx)) * (1 - ((bb122->getMax().y()-pos.y())/dy))*(1 - ((bb122->getMax().z() - pos.z())/dz));
-				dx = bb222->getMax().x() - bb222->getMin().x(); dy = bb222->getMax().y() - bb222->getMin().y(); dz = bb222->getMax().z() - bb222->getMin().z();
-				au[7] = (1 - ((bb222->getMax().x() - pos.x())/dx)) * (1 - ((bb222->getMax().y()-pos.y())/dy))*(1 - ((bb222->getMax().z() - pos.z())/dz));
-			}
-			else										// k-1
-			{
-				u[0] = bb111->get_u_plus();		// get_u_plus(i,j,k);
-				u[1] = bb211->get_u_plus();		// get_u_plus(i + 1,j,k);
-				u[2] = bb121->get_u_plus();		// get_u_plus(i,j + 1,k);
-				u[3] = bb221->get_u_plus();		// get_u_plus(i+1,j + 1,k); 
-				u[4] = bb110->get_u_plus();		// get_u_plus(i,j,k-1);
-				u[5] = bb210->get_u_plus();		// get_u_plus(i+1,j,k-1);
-				u[6] = bb120->get_u_plus();		// get_u_plus(i,j+1,k-1);
-				u[7] = bb220->get_u_plus();		// get_u_plus(i+1,j+1,k-1);
-				dx = bb111->getMax().x() - bb111->getMin().x(); dy = bb111->getMax().y() - bb111->getMin().y(); dz = bb111->getMax().z() - bb111->getMin().z();
-				au[0] = (1 - ((bb111->getMax().x() - pos.x())/dx)) * (1 - ((bb111->getMax().y()-pos.y())/dy))*(1 - ((bb111->getMax().z() - pos.z())/dz));
-				dx = bb211->getMax().x() - bb211->getMin().x(); dy = bb211->getMax().y() - bb211->getMin().y(); dz = bb211->getMax().z() - bb211->getMin().z();
-				au[1] = (1 - ((bb211->getMax().x() - pos.x())/dx)) * (1 - ((bb211->getMax().y()-pos.y())/dy))*(1 - ((bb211->getMax().z() - pos.z())/dz));
-				dx = bb121->getMax().x() - bb121->getMin().x(); dy = bb121->getMax().y() - bb121->getMin().y(); dz = bb121->getMax().z() - bb121->getMin().z();
-				au[2] = (1 - ((bb121->getMax().x() - pos.x())/dx)) * (1 - ((bb121->getMax().y()-pos.y())/dy))*(1 - ((bb121->getMax().z() - pos.z())/dz));
-				dx = bb221->getMax().x() - bb221->getMin().x(); dy = bb221->getMax().y() - bb221->getMin().y(); dz = bb221->getMax().z() - bb221->getMin().z();
-				au[3] = (1 - ((bb221->getMax().x() - pos.x())/dx)) * (1 - ((bb221->getMax().y()-pos.y())/dy))*(1 - ((bb221->getMax().z() - pos.z())/dz));
-				dx = bb110->getMax().x() - bb110->getMin().x(); dy = bb212->getMax().y() - bb212->getMin().y(); dz = bb212->getMax().z() - bb212->getMin().z();
-				au[4] = (1 - ((bb110->getMax().x() - pos.x())/dx)) * (1 - ((bb110->getMax().y()-pos.y())/dy))*(1 - ((bb110->getMax().z() - pos.z())/dz));
-				dx = bb210->getMax().x() - bb210->getMin().x(); dy = bb210->getMax().y() - bb210->getMin().y(); dz = bb210->getMax().z() - bb210->getMin().z();
-				au[5] = (1 - ((bb210->getMax().x() - pos.x())/dx)) * (1 - ((bb210->getMax().y()-pos.y())/dy))*(1 - ((bb210->getMax().z() - pos.z())/dz));
-				dx = bb120->getMax().x() - bb120->getMin().x(); dy = bb120->getMax().y() - bb120->getMin().y(); dz = bb120->getMax().z() - bb120->getMin().z();
-				au[6] = (1 - ((bb120->getMax().x() - pos.x())/dx)) * (1 - ((bb120->getMax().y()-pos.y())/dy))*(1 - ((bb120->getMax().z() - pos.z())/dz));
-				dx = bb220->getMax().x() - bb220->getMin().x(); dy = bb220->getMax().y() - bb220->getMin().y(); dz = bb220->getMax().z() - bb220->getMin().z();
-				au[7] = (1 - ((bb220->getMax().x() - pos.x())/dx)) * (1 - ((bb220->getMax().y()-pos.y())/dy))*(1 - ((bb220->getMax().z() - pos.z())/dz));
-			}
-		}
-		else											// j-1
-		{
-			if(pos.z() > bb111->getMin().z() + 0.5*dz)	// k+1
-			{
-				u[0] = bb111->get_u_plus();		// get_u_plus(i,j,k);
-				u[1] = bb211->get_u_plus();		// get_u_plus(i+1,j,k);
-				u[2] = bb101->get_u_plus();		// get_u_plus(i,j-1,k);
-				u[3] = bb201->get_u_plus();		// get_u_plus(i+1,j-1,k); 
-				u[4] = bb112->get_u_plus();		// get_u_plus(i,j,k+1);
-				u[5] = bb212->get_u_plus();		// get_u_plus(i+1,j,k+1);
-				u[6] = bb102->get_u_plus();		// get_u_plus(i,j-1,k+1);
-				u[7] = bb202->get_u_plus();		// get_u_plus(i+1,j-1,k+1);
-				dx = bb111->getMax().x() - bb111->getMin().x(); dy = bb111->getMax().y() - bb111->getMin().y(); dz = bb111->getMax().z() - bb111->getMin().z();
-				au[0] = (1 - ((bb111->getMax().x() - pos.x())/dx)) * (1 - ((bb111->getMax().y()-pos.y())/dy))*(1 - ((bb111->getMax().z() - pos.z())/dz));
-				dx = bb211->getMax().x() - bb211->getMin().x(); dy = bb211->getMax().y() - bb211->getMin().y(); dz = bb211->getMax().z() - bb211->getMin().z();
-				au[1] = (1 - ((bb211->getMax().x() - pos.x())/dx)) * (1 - ((bb211->getMax().y()-pos.y())/dy))*(1 - ((bb211->getMax().z() - pos.z())/dz));
-				dx = bb101->getMax().x() - bb101->getMin().x(); dy = bb101->getMax().y() - bb101->getMin().y(); dz = bb101->getMax().z() - bb101->getMin().z();
-				au[2] = (1 - ((bb101->getMax().x() - pos.x())/dx)) * (1 - ((bb101->getMax().y()-pos.y())/dy))*(1 - ((bb101->getMax().z() - pos.z())/dz));
-				dx = bb201->getMax().x() - bb201->getMin().x(); dy = bb201->getMax().y() - bb201->getMin().y(); dz = bb201->getMax().z() - bb201->getMin().z();
-				au[3] = (1 - ((bb201->getMax().x() - pos.x())/dx)) * (1 - ((bb201->getMax().y()-pos.y())/dy))*(1 - ((bb201->getMax().z() - pos.z())/dz));
-				dx = bb112->getMax().x() - bb112->getMin().x(); dy = bb112->getMax().y() - bb112->getMin().y(); dz = bb112->getMax().z() - bb112->getMin().z();
-				au[4] = (1 - ((bb112->getMax().x() - pos.x())/dx)) * (1 - ((bb112->getMax().y()-pos.y())/dy))*(1 - ((bb112->getMax().z() - pos.z())/dz));
-				dx = bb212->getMax().x() - bb212->getMin().x(); dy = bb212->getMax().y() - bb212->getMin().y(); dz = bb212->getMax().z() - bb212->getMin().z();
-				au[5] = (1 - ((bb212->getMax().x() - pos.x())/dx)) * (1 - ((bb212->getMax().y()-pos.y())/dy))*(1 - ((bb212->getMax().z() - pos.z())/dz));
-				dx = bb102->getMax().x() - bb102->getMin().x(); dy = bb102->getMax().y() - bb102->getMin().y(); dz = bb102->getMax().z() - bb102->getMin().z();
-				au[6] = (1 - ((bb102->getMax().x() - pos.x())/dx)) * (1 - ((bb102->getMax().y()-pos.y())/dy))*(1 - ((bb102->getMax().z() - pos.z())/dz));
-				dx = bb202->getMax().x() - bb202->getMin().x(); dy = bb202->getMax().y() - bb202->getMin().y(); dz = bb202->getMax().z() - bb202->getMin().z();
-				au[7] = (1 - ((bb202->getMax().x() - pos.x())/dx)) * (1 - ((bb202->getMax().y()-pos.y())/dy))*(1 - ((bb202->getMax().z() - pos.z())/dz));
-			}
-			else										// k-1
-			{
-				u[0] = bb111->get_u_plus();		// get_u_plus(i,j,k);
-				u[1] = bb211->get_u_plus();		// get_u_plus(i + 1,j,k);
-				u[2] = bb101->get_u_plus();		// get_u_plus(i,j-1,k);
-				u[3] = bb201->get_u_plus();		// get_u_plus(i+1,j-1,k); 
-				u[4] = bb110->get_u_plus();		// get_u_plus(i,j,k-1);
-				u[5] = bb210->get_u_plus();		// get_u_plus(i+1,j,k-1);
-				u[6] = bb100->get_u_plus();		// get_u_plus(i,j-1,k-1);
-				u[7] = bb200->get_u_plus();		// get_u_plus(i+1,j-1,k-1);
-				dx = bb111->getMax().x() - bb111->getMin().x(); dy = bb111->getMax().y() - bb111->getMin().y(); dz = bb111->getMax().z() - bb111->getMin().z();
-				au[0] = (1 - ((bb111->getMax().x() - pos.x())/dx)) * (1 - ((bb111->getMax().y()-pos.y())/dy))*(1 - ((bb111->getMax().z() - pos.z())/dz));
-				dx = bb211->getMax().x() - bb211->getMin().x(); dy = bb211->getMax().y() - bb211->getMin().y(); dz = bb211->getMax().z() - bb211->getMin().z();
-				au[1] = (1 - ((bb211->getMax().x() - pos.x())/dx)) * (1 - ((bb211->getMax().y()-pos.y())/dy))*(1 - ((bb211->getMax().z() - pos.z())/dz));
-				dx = bb101->getMax().x() - bb101->getMin().x(); dy = bb101->getMax().y() - bb101->getMin().y(); dz = bb101->getMax().z() - bb101->getMin().z();
-				au[2] = (1 - ((bb101->getMax().x() - pos.x())/dx)) * (1 - ((bb101->getMax().y()-pos.y())/dy))*(1 - ((bb101->getMax().z() - pos.z())/dz));
-				dx = bb201->getMax().x() - bb201->getMin().x(); dy = bb201->getMax().y() - bb201->getMin().y(); dz = bb201->getMax().z() - bb201->getMin().z();
-				au[3] = (1 - ((bb201->getMax().x() - pos.x())/dx)) * (1 - ((bb201->getMax().y()-pos.y())/dy))*(1 - ((bb201->getMax().z() - pos.z())/dz));
-				dx = bb110->getMax().x() - bb110->getMin().x(); dy = bb110->getMax().y() - bb110->getMin().y(); dz = bb110->getMax().z() - bb110->getMin().z();
-				au[4] = (1 - ((bb110->getMax().x() - pos.x())/dx)) * (1 - ((bb110->getMax().y()-pos.y())/dy))*(1 - ((bb110->getMax().z() - pos.z())/dz));
-				dx = bb210->getMax().x() - bb210->getMin().x(); dy = bb210->getMax().y() - bb210->getMin().y(); dz = bb210->getMax().z() - bb210->getMin().z();
-				au[5] = (1 - ((bb210->getMax().x() - pos.x())/dx)) * (1 - ((bb210->getMax().y()-pos.y())/dy))*(1 - ((bb210->getMax().z() - pos.z())/dz));
-				dx = bb100->getMax().x() - bb100->getMin().x(); dy = bb100->getMax().y() - bb100->getMin().y(); dz = bb100->getMax().z() - bb100->getMin().z();
-				au[6] = (1 - ((bb100->getMax().x() - pos.x())/dx)) * (1 - ((bb100->getMax().y()-pos.y())/dy))*(1 - ((bb100->getMax().z() - pos.z())/dz));
-				dx = bb200->getMax().x() - bb200->getMin().x(); dy = bb200->getMax().y() - bb200->getMin().y(); dz = bb200->getMax().z() - bb200->getMin().z();
-				au[7] = (1 - ((bb200->getMax().x() - pos.x())/dx)) * (1 - ((bb200->getMax().y()-pos.y())/dy))*(1 - ((bb200->getMax().z() - pos.z())/dz));
-			}
-		}
-	}
-	else												// i-1
-	{
-		if(pos.y() > bb111->getMin().y() + 0.5*dy)		// 
-		{
-			if(pos.z() > bb111->getMin().z() + 0.5*dz)
-			{
-				u[0] = bb111->get_u_plus();		// get_u_plus(i,j,k);
-				u[1] = bb011->get_u_plus();		// get_u_plus(i-1,j,k);
-				u[2] = bb121->get_u_plus();		// get_u_plus(i,j + 1,k);
-				u[3] = bb021->get_u_plus();		// get_u_plus(i-1,j + 1,k); 
-				u[4] = bb112->get_u_plus();		// get_u_plus(i,j,k+1);
-				u[5] = bb012->get_u_plus();		// get_u_plus(i-1,j,k+1);
-				u[6] = bb122->get_u_plus();		// get_u_plus(i,j+1,k+1);
-				u[7] = bb022->get_u_plus();		// get_u_plus(i-1,j+1,k+1);
-				dx = bb111->getMax().x() - bb111->getMin().x(); dy = bb111->getMax().y() - bb111->getMin().y(); dz = bb111->getMax().z() - bb111->getMin().z();
-				au[0] = (1 - ((bb111->getMax().x() - pos.x())/dx)) * (1 - ((bb111->getMax().y()-pos.y())/dy))*(1 - ((bb111->getMax().z() - pos.z())/dz));
-				dx = bb011->getMax().x() - bb011->getMin().x(); dy = bb011->getMax().y() - bb011->getMin().y(); dz = bb011->getMax().z() - bb011->getMin().z();
-				au[1] = (1 - ((bb011->getMax().x() - pos.x())/dx)) * (1 - ((bb011->getMax().y()-pos.y())/dy))*(1 - ((bb011->getMax().z() - pos.z())/dz));
-				dx = bb121->getMax().x() - bb121->getMin().x(); dy = bb121->getMax().y() - bb121->getMin().y(); dz = bb121->getMax().z() - bb121->getMin().z();
-				au[2] = (1 - ((bb121->getMax().x() - pos.x())/dx)) * (1 - ((bb121->getMax().y()-pos.y())/dy))*(1 - ((bb121->getMax().z() - pos.z())/dz));
-				dx = bb021->getMax().x() - bb021->getMin().x(); dy = bb021->getMax().y() - bb021->getMin().y(); dz = bb021->getMax().z() - bb021->getMin().z();
-				au[3] = (1 - ((bb021->getMax().x() - pos.x())/dx)) * (1 - ((bb021->getMax().y()-pos.y())/dy))*(1 - ((bb021->getMax().z() - pos.z())/dz));
-				dx = bb112->getMax().x() - bb112->getMin().x(); dy = bb112->getMax().y() - bb112->getMin().y(); dz = bb112->getMax().z() - bb112->getMin().z();
-				au[4] = (1 - ((bb112->getMax().x() - pos.x())/dx)) * (1 - ((bb112->getMax().y()-pos.y())/dy))*(1 - ((bb112->getMax().z() - pos.z())/dz));
-				dx = bb012->getMax().x() - bb012->getMin().x(); dy = bb012->getMax().y() - bb012->getMin().y(); dz = bb012->getMax().z() - bb012->getMin().z();
-				au[5] = (1 - ((bb012->getMax().x() - pos.x())/dx)) * (1 - ((bb012->getMax().y()-pos.y())/dy))*(1 - ((bb012->getMax().z() - pos.z())/dz));
-				dx = bb122->getMax().x() - bb122->getMin().x(); dy = bb122->getMax().y() - bb122->getMin().y(); dz = bb122->getMax().z() - bb122->getMin().z();
-				au[6] = (1 - ((bb122->getMax().x() - pos.x())/dx)) * (1 - ((bb122->getMax().y()-pos.y())/dy))*(1 - ((bb122->getMax().z() - pos.z())/dz));
-				dx = bb022->getMax().x() - bb022->getMin().x(); dy = bb022->getMax().y() - bb022->getMin().y(); dz = bb022->getMax().z() - bb022->getMin().z();
-				au[7] = (1 - ((bb022->getMax().x() - pos.x())/dx)) * (1 - ((bb022->getMax().y()-pos.y())/dy))*(1 - ((bb022->getMax().z() - pos.z())/dz));
+				cell[0] = oc->getCell(im, jm, k); cell[4] = oc->getCell(im, j, km);
+				cell[1] = oc->getCell(i , jm, k); cell[5] = oc->getCell(i , j, km);
+				cell[2] = oc->getCell(im, j , k); cell[6] = oc->getCell(im, j, k );
+				cell[3] = oc->getCell(i , j , k); cell[7] = oc->getCell(i , j, k );
 			}
 			else
 			{
-				u[0] = bb111->get_u_plus();		// get_u_plus(i,j,k);
-				u[1] = bb011->get_u_plus();		// get_u_plus(i-1,j,k);
-				u[2] = bb121->get_u_plus();		// get_u_plus(i,j + 1,k);
-				u[3] = bb021->get_u_plus();		// get_u_plus(i-1,j + 1,k); 
-				u[4] = bb110->get_u_plus();		// get_u_plus(i,j,k-1);
-				u[5] = bb010->get_u_plus();		// get_u_plus(i-1,j,k-1);
-				u[6] = bb120->get_u_plus();		// get_u_plus(i,j+1,k-1);
-				u[7] = bb020->get_u_plus();		// get_u_plus(i-1,j+1,k-1);
-				dx = bb111->getMax().x() - bb111->getMin().x(); dy = bb111->getMax().y() - bb111->getMin().y(); dz = bb111->getMax().z() - bb111->getMin().z();
-				au[0] = (1 - ((bb111->getMax().x() - pos.x())/dx)) * (1 - ((bb111->getMax().y()-pos.y())/dy))*(1 - ((bb111->getMax().z() - pos.z())/dz));
-				dx = bb011->getMax().x() - bb011->getMin().x(); dy = bb011->getMax().y() - bb011->getMin().y(); dz = bb011->getMax().z() - bb011->getMin().z();
-				au[1] = (1 - ((bb011->getMax().x() - pos.x())/dx)) * (1 - ((bb011->getMax().y()-pos.y())/dy))*(1 - ((bb011->getMax().z() - pos.z())/dz));
-				dx = bb121->getMax().x() - bb121->getMin().x(); dy = bb121->getMax().y() - bb121->getMin().y(); dz = bb121->getMax().z() - bb121->getMin().z();
-				au[2] = (1 - ((bb121->getMax().x() - pos.x())/dx)) * (1 - ((bb121->getMax().y()-pos.y())/dy))*(1 - ((bb121->getMax().z() - pos.z())/dz));
-				dx = bb021->getMax().x() - bb021->getMin().x(); dy = bb021->getMax().y() - bb021->getMin().y(); dz = bb021->getMax().z() - bb021->getMin().z();
-				au[3] = (1 - ((bb021->getMax().x() - pos.x())/dx)) * (1 - ((bb021->getMax().y()-pos.y())/dy))*(1 - ((bb021->getMax().z() - pos.z())/dz));
-				dx = bb110->getMax().x() - bb110->getMin().x(); dy = bb110->getMax().y() - bb110->getMin().y(); dz = bb110->getMax().z() - bb110->getMin().z();
-				au[4] = (1 - ((bb110->getMax().x() - pos.x())/dx)) * (1 - ((bb110->getMax().y()-pos.y())/dy))*(1 - ((bb110->getMax().z() - pos.z())/dz));
-				dx = bb010->getMax().x() - bb010->getMin().x(); dy = bb010->getMax().y() - bb010->getMin().y(); dz = bb010->getMax().z() - bb010->getMin().z();
-				au[5] = (1 - ((bb010->getMax().x() - pos.x())/dx)) * (1 - ((bb010->getMax().y()-pos.y())/dy))*(1 - ((bb010->getMax().z() - pos.z())/dz));
-				dx = bb120->getMax().x() - bb120->getMin().x(); dy = bb120->getMax().y() - bb120->getMin().y(); dz = bb120->getMax().z() - bb120->getMin().z();
-				au[6] = (1 - ((bb120->getMax().x() - pos.x())/dx)) * (1 - ((bb120->getMax().y()-pos.y())/dy))*(1 - ((bb120->getMax().z() - pos.z())/dz));
-				dx = bb020->getMax().x() - bb020->getMin().x(); dy = bb020->getMax().y() - bb020->getMin().y(); dz = bb020->getMax().z() - bb020->getMin().z();
-				au[7] = (1 - ((bb020->getMax().x() - pos.x())/dx)) * (1 - ((bb020->getMax().y()-pos.y())/dy))*(1 - ((bb020->getMax().z() - pos.z())/dz));
+				cell[0] = oc->getCell(im, jm, k); cell[4] = oc->getCell(im, j, k );
+				cell[1] = oc->getCell(i , jm, k); cell[5] = oc->getCell(i , j, k );
+				cell[2] = oc->getCell(im, j , k); cell[6] = oc->getCell(im, j, kp);
+				cell[3] = oc->getCell(i , j , k); cell[7] = oc->getCell(i , j, kp);
 			}
 		}
 		else
 		{
-			if(pos.z() > bb111->getMin().z() + 0.5*dz)
+			if(pos.z() < min.z() + 0.5*dz)
 			{
-				u[0] = bb111->get_u_plus();		// get_u_plus(i,j,k);
-				u[1] = bb011->get_u_plus();		// get_u_plus(i-1,j,k);
-				u[2] = bb101->get_u_plus();		// get_u_plus(i,j-1,k);
-				u[3] = bb001->get_u_plus();		// get_u_plus(i-1,j-1,k); 
-				u[4] = bb112->get_u_plus();		// get_u_plus(i,j,k+1);
-				u[5] = bb012->get_u_plus();		// get_u_plus(i-1,j,k+1);
-				u[6] = bb102->get_u_plus();		// get_u_plus(i,j-1,k+1);
-				u[7] = bb002->get_u_plus();		// get_u_plus(i-1,j-1,k+1);
-				dx = bb111->getMax().x() - bb111->getMin().x(); dy = bb111->getMax().y() - bb111->getMin().y(); dz = bb111->getMax().z() - bb111->getMin().z();
-				au[0] = (1 - ((bb111->getMax().x() - pos.x())/dx)) * (1 - ((bb111->getMax().y()-pos.y())/dy))*(1 - ((bb111->getMax().z() - pos.z())/dz));
-				dx = bb011->getMax().x() - bb011->getMin().x(); dy = bb011->getMax().y() - bb011->getMin().y(); dz = bb011->getMax().z() - bb011->getMin().z();
-				au[1] = (1 - ((bb011->getMax().x() - pos.x())/dx)) * (1 - ((bb011->getMax().y()-pos.y())/dy))*(1 - ((bb011->getMax().z() - pos.z())/dz));
-				dx = bb101->getMax().x() - bb101->getMin().x(); dy = bb101->getMax().y() - bb101->getMin().y(); dz = bb101->getMax().z() - bb101->getMin().z();
-				au[2] = (1 - ((bb101->getMax().x() - pos.x())/dx)) * (1 - ((bb101->getMax().y()-pos.y())/dy))*(1 - ((bb101->getMax().z() - pos.z())/dz));
-				dx = bb001->getMax().x() - bb001->getMin().x(); dy = bb001->getMax().y() - bb001->getMin().y(); dz = bb001->getMax().z() - bb001->getMin().z();
-				au[3] = (1 - ((bb001->getMax().x() - pos.x())/dx)) * (1 - ((bb001->getMax().y()-pos.y())/dy))*(1 - ((bb001->getMax().z() - pos.z())/dz));
-				dx = bb112->getMax().x() - bb112->getMin().x(); dy = bb112->getMax().y() - bb112->getMin().y(); dz = bb112->getMax().z() - bb112->getMin().z();
-				au[4] = (1 - ((bb112->getMax().x() - pos.x())/dx)) * (1 - ((bb112->getMax().y()-pos.y())/dy))*(1 - ((bb112->getMax().z() - pos.z())/dz));
-				dx = bb012->getMax().x() - bb012->getMin().x(); dy = bb012->getMax().y() - bb012->getMin().y(); dz = bb012->getMax().z() - bb012->getMin().z();
-				au[5] = (1 - ((bb012->getMax().x() - pos.x())/dx)) * (1 - ((bb012->getMax().y()-pos.y())/dy))*(1 - ((bb012->getMax().z() - pos.z())/dz));
-				dx = bb102->getMax().x() - bb102->getMin().x(); dy = bb102->getMax().y() - bb102->getMin().y(); dz = bb102->getMax().z() - bb102->getMin().z();
-				au[6] = (1 - ((bb102->getMax().x() - pos.x())/dx)) * (1 - ((bb102->getMax().y()-pos.y())/dy))*(1 - ((bb102->getMax().z() - pos.z())/dz));
-				dx = bb002->getMax().x() - bb002->getMin().x(); dy = bb002->getMax().y() - bb002->getMin().y(); dz = bb002->getMax().z() - bb002->getMin().z();
-				au[7] = (1 - ((bb002->getMax().x() - pos.x())/dx)) * (1 - ((bb002->getMax().y()-pos.y())/dy))*(1 - ((bb002->getMax().z() - pos.z())/dz));
+				cell[0] = oc->getCell(im, j , k); cell[4] = oc->getCell(im, j, km);
+				cell[1] = oc->getCell(i , j , k); cell[5] = oc->getCell(i , j, km);
+				cell[2] = oc->getCell(im, jp, k); cell[6] = oc->getCell(im, j, k );
+				cell[3] = oc->getCell(i , jp, k); cell[7] = oc->getCell(i , j, k );
 			}
 			else
 			{
-				u[0] = bb111->get_u_plus();		// get_u_plus(i,j,k);
-				u[1] = bb011->get_u_plus();		// get_u_plus(i-1,j,k);
-				u[2] = bb101->get_u_plus();		// get_u_plus(i,j-1,k);
-				u[3] = bb001->get_u_plus();		// get_u_plus(i-1,j-1,k); 
-				u[4] = bb110->get_u_plus();		// get_u_plus(i,j,k-1);
-				u[5] = bb010->get_u_plus();		// get_u_plus(i-1,j,k-1);
-				u[6] = bb100->get_u_plus();		// get_u_plus(i,j-1,k-1);
-				u[7] = bb000->get_u_plus();		// get_u_plus(i-1,j-1,k-1);
-				dx = bb111->getMax().x() - bb111->getMin().x(); dy = bb111->getMax().y() - bb111->getMin().y(); dz = bb111->getMax().z() - bb111->getMin().z();
-				au[0] = (1 - ((bb111->getMax().x() - pos.x())/dx)) * (1 - ((bb111->getMax().y()-pos.y())/dy))*(1 - ((bb111->getMax().z() - pos.z())/dz));
-				dx = bb011->getMax().x() - bb011->getMin().x(); dy = bb011->getMax().y() - bb011->getMin().y(); dz = bb011->getMax().z() - bb011->getMin().z();
-				au[1] = (1 - ((bb011->getMax().x() - pos.x())/dx)) * (1 - ((bb011->getMax().y()-pos.y())/dy))*(1 - ((bb011->getMax().z() - pos.z())/dz));
-				dx = bb101->getMax().x() - bb101->getMin().x(); dy = bb101->getMax().y() - bb101->getMin().y(); dz = bb101->getMax().z() - bb101->getMin().z();
-				au[2] = (1 - ((bb101->getMax().x() - pos.x())/dx)) * (1 - ((bb101->getMax().y()-pos.y())/dy))*(1 - ((bb101->getMax().z() - pos.z())/dz));
-				dx = bb001->getMax().x() - bb001->getMin().x(); dy = bb001->getMax().y() - bb001->getMin().y(); dz = bb001->getMax().z() - bb001->getMin().z();
-				au[3] = (1 - ((bb001->getMax().x() - pos.x())/dx)) * (1 - ((bb001->getMax().y()-pos.y())/dy))*(1 - ((bb001->getMax().z() - pos.z())/dz));
-				dx = bb110->getMax().x() - bb110->getMin().x(); dy = bb110->getMax().y() - bb110->getMin().y(); dz = bb110->getMax().z() - bb110->getMin().z();
-				au[4] = (1 - ((bb110->getMax().x() - pos.x())/dx)) * (1 - ((bb110->getMax().y()-pos.y())/dy))*(1 - ((bb110->getMax().z() - pos.z())/dz));
-				dx = bb010->getMax().x() - bb010->getMin().x(); dy = bb010->getMax().y() - bb010->getMin().y(); dz = bb010->getMax().z() - bb010->getMin().z();
-				au[5] = (1 - ((bb010->getMax().x() - pos.x())/dx)) * (1 - ((bb010->getMax().y()-pos.y())/dy))*(1 - ((bb010->getMax().z() - pos.z())/dz));
-				dx = bb100->getMax().x() - bb100->getMin().x(); dy = bb100->getMax().y() - bb100->getMin().y(); dz = bb100->getMax().z() - bb100->getMin().z();
-				au[6] = (1 - ((bb100->getMax().x() - pos.x())/dx)) * (1 - ((bb100->getMax().y()-pos.y())/dy))*(1 - ((bb100->getMax().z() - pos.z())/dz));
-				dx = bb000->getMax().x() - bb000->getMin().x(); dy = bb000->getMax().y() - bb000->getMin().y(); dz = bb000->getMax().z() - bb000->getMin().z();
-				au[7] = (1 - ((bb000->getMax().x() - pos.x())/dx)) * (1 - ((bb000->getMax().y()-pos.y())/dy))*(1 - ((bb000->getMax().z() - pos.z())/dz));
+				cell[0] = oc->getCell(im, j , k); cell[4] = oc->getCell(im, j, k );
+				cell[1] = oc->getCell(i , j , k); cell[5] = oc->getCell(i , j, k );
+				cell[2] = oc->getCell(im, jp, k); cell[6] = oc->getCell(im, j, kp);
+				cell[3] = oc->getCell(i , jp, k); cell[7] = oc->getCell(i , j, kp);
 			}
 		}
 	}
-	
-	average.setx((abs(au[0])*u[0] + abs(au[1])*u[1] + abs(au[2])*u[2] + abs(au[3])*u[3] + abs(au[4])*u[4] + abs(au[5])*u[5] + abs(au[6])*u[6] + abs(au[7])*u[7]));
-	/*
-	// Calculate the V velocity (y direction)
-	if (pos.x() > bb111->getMin().x() + 0.5*dx)			// i+1
+	else
 	{
-		if(pos.y() > bb111->getMin().y() + 0.5*dy)		// j+1
+		if(pos.y() < min.y() + 0.5*dy)
 		{
-			if(pos.z() > bb111->getMin().z() + 0.5*dz)	// k+1
+			if(pos.z() < min.z() + 0.5*dz)
 			{
-				v[0] = bb111->get_v_plus();		// get_v_plus(i,j,k);
-				v[1] = bb211->get_v_plus();		// get_v_plus(i + 1,j,k);
-				v[2] = bb121->get_v_plus();		// get_v_plus(i,j + 1,k);
-				v[3] = bb221->get_v_plus();		// get_v_plus(i+1,j + 1,k); 
-				v[4] = bb112->get_v_plus();		// get_v_plus(i,j,k+1);
-				v[5] = bb212->get_v_plus();		// get_v_plus(i+1,j,k+1);
-				v[6] = bb122->get_v_plus();		// get_v_plus(i,j+1,k+1);
-				v[7] = bb222->get_v_plus();		// get_v_plus(i+1,j+1,k+1);
-				av[0] = (1 - ((bb111->getMax().x() - pos.x())/dx)) * (1 - ((bb111->getMax().y()-pos.y())/dy))*(1 - ((bb111->getMax().z() - pos.z())/dz));
-				av[1] = (1 - ((bb211->getMax().x() - pos.x())/dx)) * (1 - ((bb211->getMax().y()-pos.y())/dy))*(1 - ((bb211->getMax().z() - pos.z())/dz));
-				av[2] = (1 - ((bb121->getMax().x() - pos.x())/dx)) * (1 - ((bb121->getMax().y()-pos.y())/dy))*(1 - ((bb121->getMax().z() - pos.z())/dz));
-				av[3] = (1 - ((bb221->getMax().x() - pos.x())/dx)) * (1 - ((bb221->getMax().y()-pos.y())/dy))*(1 - ((bb221->getMax().z() - pos.z())/dz));
-				av[4] = (1 - ((bb112->getMax().x() - pos.x())/dx)) * (1 - ((bb112->getMax().y()-pos.y())/dy))*(1 - ((bb112->getMax().z() - pos.z())/dz));
-				av[5] = (1 - ((bb212->getMax().x() - pos.x())/dx)) * (1 - ((bb212->getMax().y()-pos.y())/dy))*(1 - ((bb212->getMax().z() - pos.z())/dz));
-				av[6] = (1 - ((bb122->getMax().x() - pos.x())/dx)) * (1 - ((bb122->getMax().y()-pos.y())/dy))*(1 - ((bb122->getMax().z() - pos.z())/dz));
-				av[7] = (1 - ((bb222->getMax().x() - pos.x())/dx)) * (1 - ((bb222->getMax().y()-pos.y())/dy))*(1 - ((bb222->getMax().z() - pos.z())/dz));
-			}
-			else										// k-1
-			{
-				v[0] = bb111->get_v_plus();		// get_v_plus(i,j,k);
-				v[1] = bb211->get_v_plus();		// get_v_plus(i + 1,j,k);
-				v[2] = bb121->get_v_plus();		// get_v_plus(i,j + 1,k);
-				v[3] = bb221->get_v_plus();		// get_v_plus(i+1,j + 1,k); 
-				v[4] = bb110->get_v_plus();		// get_v_plus(i,j,k-1);
-				v[5] = bb210->get_v_plus();		// get_v_plus(i+1,j,k-1);
-				v[6] = bb120->get_v_plus();		// get_v_plus(i,j+1,k-1);
-				v[7] = bb220->get_v_plus();		// get_v_plus(i+1,j+1,k-1);
-				av[0] = (1 - ((bb111->getMax().x() - pos.x())/dx)) * (1 - ((bb111->getMax().y()-pos.y())/dy))*(1 - ((bb111->getMax().z() - pos.z())/dz));
-				av[1] = (1 - ((bb211->getMax().x() - pos.x())/dx)) * (1 - ((bb211->getMax().y()-pos.y())/dy))*(1 - ((bb211->getMax().z() - pos.z())/dz));
-				av[2] = (1 - ((bb121->getMax().x() - pos.x())/dx)) * (1 - ((bb121->getMax().y()-pos.y())/dy))*(1 - ((bb121->getMax().z() - pos.z())/dz));
-				av[3] = (1 - ((bb221->getMax().x() - pos.x())/dx)) * (1 - ((bb221->getMax().y()-pos.y())/dy))*(1 - ((bb221->getMax().z() - pos.z())/dz));
-				av[4] = (1 - ((bb110->getMax().x() - pos.x())/dx)) * (1 - ((bb110->getMax().y()-pos.y())/dy))*(1 - ((bb110->getMax().z() - pos.z())/dz));
-				av[5] = (1 - ((bb210->getMax().x() - pos.x())/dx)) * (1 - ((bb210->getMax().y()-pos.y())/dy))*(1 - ((bb210->getMax().z() - pos.z())/dz));
-				av[6] = (1 - ((bb120->getMax().x() - pos.x())/dx)) * (1 - ((bb120->getMax().y()-pos.y())/dy))*(1 - ((bb120->getMax().z() - pos.z())/dz));
-				av[7] = (1 - ((bb220->getMax().x() - pos.x())/dx)) * (1 - ((bb220->getMax().y()-pos.y())/dy))*(1 - ((bb220->getMax().z() - pos.z())/dz));
-			}
-		}
-		else											// j-1
-		{
-			if(pos.z() > bb111->getMin().z() + 0.5*dz)	// k+1
-			{
-				v[0] = bb111->get_v_plus();		// get_v_plus(i,j,k);
-				v[1] = bb211->get_v_plus();		// get_v_plus(i+1,j,k);
-				v[2] = bb101->get_v_plus();		// get_v_plus(i,j-1,k);
-				v[3] = bb201->get_v_plus();		// get_v_plus(i+1,j-1,k); 
-				v[4] = bb112->get_v_plus();		// get_v_plus(i,j,k+1);
-				v[5] = bb212->get_v_plus();		// get_v_plus(i+1,j,k+1);
-				v[6] = bb102->get_v_plus();		// get_v_plus(i,j-1,k+1);
-				v[7] = bb202->get_v_plus();		// get_v_plus(i+1,j-1,k+1);
-				av[0] = (1 - ((bb111->getMax().x() - pos.x())/dx)) * (1 - ((bb111->getMax().y()-pos.y())/dy))*(1 - ((bb111->getMax().z() - pos.z())/dz));
-				av[1] = (1 - ((bb211->getMax().x() - pos.x())/dx)) * (1 - ((bb211->getMax().y()-pos.y())/dy))*(1 - ((bb211->getMax().z() - pos.z())/dz));
-				av[2] = (1 - ((bb101->getMax().x() - pos.x())/dx)) * (1 - ((bb101->getMax().y()-pos.y())/dy))*(1 - ((bb101->getMax().z() - pos.z())/dz));
-				av[3] = (1 - ((bb201->getMax().x() - pos.x())/dx)) * (1 - ((bb201->getMax().y()-pos.y())/dy))*(1 - ((bb201->getMax().z() - pos.z())/dz));
-				av[4] = (1 - ((bb112->getMax().x() - pos.x())/dx)) * (1 - ((bb112->getMax().y()-pos.y())/dy))*(1 - ((bb112->getMax().z() - pos.z())/dz));
-				av[5] = (1 - ((bb212->getMax().x() - pos.x())/dx)) * (1 - ((bb212->getMax().y()-pos.y())/dy))*(1 - ((bb212->getMax().z() - pos.z())/dz));
-				av[6] = (1 - ((bb102->getMax().x() - pos.x())/dx)) * (1 - ((bb102->getMax().y()-pos.y())/dy))*(1 - ((bb102->getMax().z() - pos.z())/dz));
-				av[7] = (1 - ((bb202->getMax().x() - pos.x())/dx)) * (1 - ((bb202->getMax().y()-pos.y())/dy))*(1 - ((bb202->getMax().z() - pos.z())/dz));
-			}
-			else										// k-1
-			{
-				v[0] = bb111->get_v_plus();		// get_v_plus(i,j,k);
-				v[1] = bb211->get_v_plus();		// get_v_plus(i + 1,j,k);
-				v[2] = bb101->get_v_plus();		// get_v_plus(i,j-1,k);
-				v[3] = bb201->get_v_plus();		// get_v_plus(i+1,j-1,k); 
-				v[4] = bb110->get_v_plus();		// get_v_plus(i,j,k-1);
-				v[5] = bb210->get_v_plus();		// get_v_plus(i+1,j,k-1);
-				v[6] = bb100->get_v_plus();		// get_v_plus(i,j-1,k-1);
-				v[7] = bb200->get_v_plus();		// get_v_plus(i+1,j-1,k-1);
-				av[0] = (1 - ((bb111->getMax().x() - pos.x())/dx)) * (1 - ((bb111->getMax().y()-pos.y())/dy))*(1 - ((bb111->getMax().z() - pos.z())/dz));
-				av[1] = (1 - ((bb211->getMax().x() - pos.x())/dx)) * (1 - ((bb211->getMax().y()-pos.y())/dy))*(1 - ((bb211->getMax().z() - pos.z())/dz));
-				av[2] = (1 - ((bb101->getMax().x() - pos.x())/dx)) * (1 - ((bb101->getMax().y()-pos.y())/dy))*(1 - ((bb101->getMax().z() - pos.z())/dz));
-				av[3] = (1 - ((bb201->getMax().x() - pos.x())/dx)) * (1 - ((bb201->getMax().y()-pos.y())/dy))*(1 - ((bb201->getMax().z() - pos.z())/dz));
-				av[4] = (1 - ((bb110->getMax().x() - pos.x())/dx)) * (1 - ((bb110->getMax().y()-pos.y())/dy))*(1 - ((bb110->getMax().z() - pos.z())/dz));
-				av[5] = (1 - ((bb210->getMax().x() - pos.x())/dx)) * (1 - ((bb210->getMax().y()-pos.y())/dy))*(1 - ((bb210->getMax().z() - pos.z())/dz));
-				av[6] = (1 - ((bb100->getMax().x() - pos.x())/dx)) * (1 - ((bb100->getMax().y()-pos.y())/dy))*(1 - ((bb100->getMax().z() - pos.z())/dz));
-				av[7] = (1 - ((bb200->getMax().x() - pos.x())/dx)) * (1 - ((bb200->getMax().y()-pos.y())/dy))*(1 - ((bb200->getMax().z() - pos.z())/dz));
-			}
-		}
-	}
-	else												// i-1
-	{
-		if(pos.y() > bb111->getMin().y() + 0.5*dy)		// 
-		{
-			if(pos.z() > bb111->getMin().z() + 0.5*dz)
-			{
-				v[0] = bb111->get_v_plus();		// get_v_plus(i,j,k);
-				v[1] = bb011->get_v_plus();		// get_v_plus(i-1,j,k);
-				v[2] = bb121->get_v_plus();		// get_v_plus(i,j + 1,k);
-				v[3] = bb021->get_v_plus();		// get_v_plus(i-1,j + 1,k); 
-				v[4] = bb112->get_v_plus();		// get_v_plus(i,j,k+1);
-				v[5] = bb012->get_v_plus();		// get_v_plus(i-1,j,k+1);
-				v[6] = bb122->get_v_plus();		// get_v_plus(i,j+1,k+1);
-				v[7] = bb022->get_v_plus();		// get_v_plus(i-1,j+1,k+1);
-				av[0] = (1 - ((bb111->getMax().x() - pos.x())/dx)) * (1 - ((bb111->getMax().y()-pos.y())/dy))*(1 - ((bb111->getMax().z() - pos.z())/dz));
-				av[1] = (1 - ((bb011->getMax().x() - pos.x())/dx)) * (1 - ((bb011->getMax().y()-pos.y())/dy))*(1 - ((bb011->getMax().z() - pos.z())/dz));
-				av[2] = (1 - ((bb121->getMax().x() - pos.x())/dx)) * (1 - ((bb121->getMax().y()-pos.y())/dy))*(1 - ((bb121->getMax().z() - pos.z())/dz));
-				av[3] = (1 - ((bb021->getMax().x() - pos.x())/dx)) * (1 - ((bb021->getMax().y()-pos.y())/dy))*(1 - ((bb021->getMax().z() - pos.z())/dz));
-				av[4] = (1 - ((bb112->getMax().x() - pos.x())/dx)) * (1 - ((bb112->getMax().y()-pos.y())/dy))*(1 - ((bb112->getMax().z() - pos.z())/dz));
-				av[5] = (1 - ((bb012->getMax().x() - pos.x())/dx)) * (1 - ((bb012->getMax().y()-pos.y())/dy))*(1 - ((bb012->getMax().z() - pos.z())/dz));
-				av[6] = (1 - ((bb122->getMax().x() - pos.x())/dx)) * (1 - ((bb122->getMax().y()-pos.y())/dy))*(1 - ((bb122->getMax().z() - pos.z())/dz));
-				av[7] = (1 - ((bb022->getMax().x() - pos.x())/dx)) * (1 - ((bb022->getMax().y()-pos.y())/dy))*(1 - ((bb022->getMax().z() - pos.z())/dz));
+				cell[0] = oc->getCell(i , jm, k); cell[4] = oc->getCell(im, j, km);
+				cell[1] = oc->getCell(ip, jm, k); cell[5] = oc->getCell(i , j, km);
+				cell[2] = oc->getCell(i , j , k); cell[6] = oc->getCell(im, j, k );
+				cell[3] = oc->getCell(ip, j , k); cell[7] = oc->getCell(i , j, k );
 			}
 			else
 			{
-				v[0] = bb111->get_v_plus();		// get_v_plus(i,j,k);
-				v[1] = bb011->get_v_plus();		// get_v_plus(i-1,j,k);
-				v[2] = bb121->get_v_plus();		// get_v_plus(i,j + 1,k);
-				v[3] = bb021->get_v_plus();		// get_v_plus(i-1,j + 1,k); 
-				v[4] = bb110->get_v_plus();		// get_v_plus(i,j,k-1);
-				v[5] = bb010->get_v_plus();		// get_v_plus(i-1,j,k-1);
-				v[6] = bb120->get_v_plus();		// get_v_plus(i,j+1,k-1);
-				v[7] = bb020->get_v_plus();		// get_v_plus(i-1,j+1,k-1);
-				av[0] = (1 - ((bb111->getMax().x() - pos.x())/dx)) * (1 - ((bb111->getMax().y()-pos.y())/dy))*(1 - ((bb111->getMax().z() - pos.z())/dz));
-				av[1] = (1 - ((bb011->getMax().x() - pos.x())/dx)) * (1 - ((bb011->getMax().y()-pos.y())/dy))*(1 - ((bb011->getMax().z() - pos.z())/dz));
-				av[2] = (1 - ((bb121->getMax().x() - pos.x())/dx)) * (1 - ((bb121->getMax().y()-pos.y())/dy))*(1 - ((bb121->getMax().z() - pos.z())/dz));
-				av[3] = (1 - ((bb021->getMax().x() - pos.x())/dx)) * (1 - ((bb021->getMax().y()-pos.y())/dy))*(1 - ((bb021->getMax().z() - pos.z())/dz));
-				av[4] = (1 - ((bb110->getMax().x() - pos.x())/dx)) * (1 - ((bb110->getMax().y()-pos.y())/dy))*(1 - ((bb110->getMax().z() - pos.z())/dz));
-				av[5] = (1 - ((bb010->getMax().x() - pos.x())/dx)) * (1 - ((bb010->getMax().y()-pos.y())/dy))*(1 - ((bb010->getMax().z() - pos.z())/dz));
-				av[6] = (1 - ((bb120->getMax().x() - pos.x())/dx)) * (1 - ((bb120->getMax().y()-pos.y())/dy))*(1 - ((bb120->getMax().z() - pos.z())/dz));
-				av[7] = (1 - ((bb020->getMax().x() - pos.x())/dx)) * (1 - ((bb020->getMax().y()-pos.y())/dy))*(1 - ((bb020->getMax().z() - pos.z())/dz));
+				cell[0] = oc->getCell(i , jm, k); cell[4] = oc->getCell(im, j, k );
+				cell[1] = oc->getCell(ip, jm, k); cell[5] = oc->getCell(i , j, k );
+				cell[2] = oc->getCell(i , j , k); cell[6] = oc->getCell(im, j, kp);
+				cell[3] = oc->getCell(ip, j , k); cell[7] = oc->getCell(i , j, kp);
 			}
 		}
 		else
 		{
-			if(pos.z() > bb111->getMin().z() + 0.5*dz)
+			if(pos.z() < min.z() + 0.5*dz)
 			{
-				v[0] = bb111->get_v_plus();		// get_v_plus(i,j,k);
-				v[1] = bb011->get_v_plus();		// get_v_plus(i-1,j,k);
-				v[2] = bb101->get_v_plus();		// get_v_plus(i,j-1,k);
-				v[3] = bb001->get_v_plus();		// get_v_plus(i-1,j-1,k); 
-				v[4] = bb112->get_v_plus();		// get_v_plus(i,j,k+1);
-				v[5] = bb012->get_v_plus();		// get_v_plus(i-1,j,k+1);
-				v[6] = bb102->get_v_plus();		// get_v_plus(i,j-1,k+1);
-				v[7] = bb002->get_v_plus();		// get_v_plus(i-1,j-1,k+1);
-				av[0] = (1 - ((bb111->getMax().x() - pos.x())/dx)) * (1 - ((bb111->getMax().y()-pos.y())/dy))*(1 - ((bb111->getMax().z() - pos.z())/dz));
-				av[1] = (1 - ((bb011->getMax().x() - pos.x())/dx)) * (1 - ((bb011->getMax().y()-pos.y())/dy))*(1 - ((bb011->getMax().z() - pos.z())/dz));
-				av[2] = (1 - ((bb101->getMax().x() - pos.x())/dx)) * (1 - ((bb101->getMax().y()-pos.y())/dy))*(1 - ((bb101->getMax().z() - pos.z())/dz));
-				av[3] = (1 - ((bb001->getMax().x() - pos.x())/dx)) * (1 - ((bb001->getMax().y()-pos.y())/dy))*(1 - ((bb001->getMax().z() - pos.z())/dz));
-				av[4] = (1 - ((bb112->getMax().x() - pos.x())/dx)) * (1 - ((bb112->getMax().y()-pos.y())/dy))*(1 - ((bb112->getMax().z() - pos.z())/dz));
-				av[5] = (1 - ((bb012->getMax().x() - pos.x())/dx)) * (1 - ((bb012->getMax().y()-pos.y())/dy))*(1 - ((bb012->getMax().z() - pos.z())/dz));
-				av[6] = (1 - ((bb102->getMax().x() - pos.x())/dx)) * (1 - ((bb102->getMax().y()-pos.y())/dy))*(1 - ((bb102->getMax().z() - pos.z())/dz));
-				av[7] = (1 - ((bb002->getMax().x() - pos.x())/dx)) * (1 - ((bb002->getMax().y()-pos.y())/dy))*(1 - ((bb002->getMax().z() - pos.z())/dz));
+				cell[0] = oc->getCell(i , j , k); cell[4] = oc->getCell(im, j, km);
+				cell[1] = oc->getCell(ip, j , k); cell[5] = oc->getCell(i , j, km);
+				cell[2] = oc->getCell(i , jp, k); cell[6] = oc->getCell(im, j, k );
+				cell[3] = oc->getCell(ip, jp, k); cell[7] = oc->getCell(i , j, k );
 			}
 			else
 			{
-				v[0] = bb111->get_v_plus();		// get_v_plus(i,j,k);
-				v[1] = bb011->get_v_plus();		// get_v_plus(i-1,j,k);
-				v[2] = bb101->get_v_plus();		// get_v_plus(i,j-1,k);
-				v[3] = bb001->get_v_plus();		// get_v_plus(i-1,j-1,k); 
-				v[4] = bb110->get_v_plus();		// get_v_plus(i,j,k-1);
-				v[5] = bb010->get_v_plus();		// get_v_plus(i-1,j,k-1);
-				v[6] = bb100->get_v_plus();		// get_v_plus(i,j-1,k-1);
-				v[7] = bb000->get_v_plus();		// get_v_plus(i-1,j-1,k-1);
-				av[0] = (1 - ((bb111->getMax().x() - pos.x())/dx)) * (1 - ((bb111->getMax().y()-pos.y())/dy))*(1 - ((bb111->getMax().z() - pos.z())/dz));
-				av[1] = (1 - ((bb011->getMax().x() - pos.x())/dx)) * (1 - ((bb011->getMax().y()-pos.y())/dy))*(1 - ((bb011->getMax().z() - pos.z())/dz));
-				av[2] = (1 - ((bb101->getMax().x() - pos.x())/dx)) * (1 - ((bb101->getMax().y()-pos.y())/dy))*(1 - ((bb101->getMax().z() - pos.z())/dz));
-				av[3] = (1 - ((bb001->getMax().x() - pos.x())/dx)) * (1 - ((bb001->getMax().y()-pos.y())/dy))*(1 - ((bb001->getMax().z() - pos.z())/dz));
-				av[4] = (1 - ((bb110->getMax().x() - pos.x())/dx)) * (1 - ((bb110->getMax().y()-pos.y())/dy))*(1 - ((bb110->getMax().z() - pos.z())/dz));
-				av[5] = (1 - ((bb010->getMax().x() - pos.x())/dx)) * (1 - ((bb010->getMax().y()-pos.y())/dy))*(1 - ((bb010->getMax().z() - pos.z())/dz));
-				av[6] = (1 - ((bb100->getMax().x() - pos.x())/dx)) * (1 - ((bb100->getMax().y()-pos.y())/dy))*(1 - ((bb100->getMax().z() - pos.z())/dz));
-				av[7] = (1 - ((bb000->getMax().x() - pos.x())/dx)) * (1 - ((bb000->getMax().y()-pos.y())/dy))*(1 - ((bb000->getMax().z() - pos.z())/dz));
+				cell[0] = oc->getCell(i , j , k); cell[4] = oc->getCell(im, j, k );
+				cell[1] = oc->getCell(ip, j , k); cell[5] = oc->getCell(i , j, k );
+				cell[2] = oc->getCell(i , jp, k); cell[6] = oc->getCell(im, j, kp);
+				cell[3] = oc->getCell(ip, jp, k); cell[7] = oc->getCell(i , j, kp);
 			}
 		}
 	}
+	// x-y / y-x
+	for(int l = 0; l < 4; l++)
+	{
+		max = cell[l]->getMax();	min = cell[l]->getMin();
+		dx = max.x() - min.x();		dy = max.y()-min.y();
+		au[l] = (1 - abs(pos.x()-max.x())/dx) * (1 - abs(pos.y()-max.y())/dy);
+		u[l] = cell[l]->get_u_plus();
+
+		av[l] = (1 - abs(pos.x()-max.x())/dx) * (1 - abs(pos.y()-max.y())/dy);
+		v[l] = cell[l]->get_v_plus();
+	}
+	// x-z
+	for(int l = 4; l < 8; l++)
+	{
+		max = cell[l]->getMax();	min = cell[l]->getMin();
+		dx = max.x() - min.x();		dz = max.z()-min.z();
+		au[l] = (1 - abs(pos.x()-max.x())/dx) * (1 - abs(pos.z()-max.z())/dz);
+		u[l] = cell[l]->get_u_plus();
+		aw[l] = (1 - abs(pos.x()-max.x())/dx) * (1 - abs(pos.z()-max.z())/dz);
+		w[l] = cell[l]->get_w_plus();
+	}
+	// z-y
+	for(int l = 0; l < 4; l++)
+	{
+		max = cell[l]->getMax();	min = cell[l]->getMin();
+		dz = max.z() - min.z();		dy = max.y()-min.y();
+		aw[l] = (1 - abs(pos.z()-max.z())/dz) * (1 - abs(pos.y()-max.y())/dy);
+		w[l] = cell[l]->get_w_plus();
+	}
+	// y-z
+	for(int l = 4; l < 8; l++)
+	{
+		max = cell[l]->getMax();	min = cell[l]->getMin();
+		dy = max.y() - min.y();		dz = max.z()-min.z();
+		av[l] = (1 - abs(pos.y()-max.y())/dy) * (1 - abs(pos.z()-max.z())/dz);
+		v[l] = cell[l]->get_v_plus();
+	}
 	
-	average.sety(av[0]*v[0] + av[1]*v[1] + av[2]*v[2] + av[3]*v[3] + av[4]*v[4] + av[5]*v[5] + av[6]*v[6] + av[7]*v[7]);
-	*/
-	average.sety(0);
-	average.setz(0);
+	MTRand mt = MTRand();
+	average.setx((au[0])*u[0] + (au[1])*u[1] + (au[2])*u[2] + (au[3])*u[3] + (au[4])*u[4] + (au[5])*u[5] + (au[6])*u[6] + (au[7])*u[7]);
+	average.sety((av[0])*v[0] + (av[1])*v[1] + (av[2])*v[2] + (av[3])*v[3] + (av[4])*v[4] + (av[5])*v[5] + (av[6])*v[6] + (av[7])*v[7]);
+	average.setz((aw[0])*w[0] + (aw[1])*w[1] + (aw[2])*w[2] + (aw[3])*w[3] + (aw[4])*w[4] + (aw[5])*w[5] + (aw[6])*w[6] + (aw[7])*w[7]);
+	//average.setx(mt.rand()*16);
+	//average.sety(mt.rand()*8);
+	//average.setz(mt.rand(0));
 
 	return average;
 }

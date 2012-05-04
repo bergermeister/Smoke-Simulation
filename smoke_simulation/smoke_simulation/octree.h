@@ -61,10 +61,10 @@ class OCTree {
 
   // =========
   // MODIFIERS
-  void AddParticle(const SmokeParticle* p);
+  void AddParticle(SmokeParticle* p);
   void RemoveParticle(const SmokeParticle* p);
   bool ParticleInCell(const SmokeParticle* p);
-  void mergeChildren();
+  void mergeChildren(std::vector<SmokeParticle *> & particles);
   void cleanupTree();
 
   void initializeVBOs() {bbox->initializeVBOs();}
