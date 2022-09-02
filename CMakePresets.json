@@ -1,0 +1,52 @@
+{
+   "version": 3,
+   "cmakeMinimumRequired": 
+   {
+      "major": 3,
+      "minor": 22,
+      "patch": 0
+   },
+   "configurePresets": 
+   [
+      {
+         "name": "gcc-debug",
+         "displayName": "GCC Debug",
+         "description": "GCC Debug Configuration",
+         "generator": "Unix Makefiles",
+         "binaryDir": "${sourceDir}/build/gcc",
+         "cacheVariables": 
+         {
+            "CMAKE_BUILD_TYPE": "Debug",
+            "CMAKE_C_FLAGS": "-std=c99 -pedantic -Wall -fprofile-arcs -ftest-coverage --coverage -pg --no-pie -no-pie -fno-pie",
+            "CMAKE_CXX_FLAGS": "-std=c++14 -Wall -fprofile-arcs -ftest-coverage --coverage -pg --no-pie -no-pie -fno-pie",
+            "CMAKE_INSTALL_PREFIX": "Lib",
+            "LINK_FLAGS": "-fprofile-arcs --coverage -pg",
+            "BUILD_TESTING": "ON",
+            "CMAKE_VERBOSE_MAKEFILE": "ON"
+         }
+      }
+   ],
+   "buildPresets": 
+   [
+      {
+         "name": "gcc-debug",
+         "configurePreset": "gcc-debug"
+      }
+   ],
+   "testPresets": 
+   [
+      {
+         "name": "gcc-debug",
+         "configurePreset": "gcc-debug",
+         "output": 
+         {
+            "outputOnFailure": true
+         },
+         "execution": 
+         {
+            "noTestsAction": "error", 
+            "stopOnFailure": true
+         }
+      }
+   ]
+}
