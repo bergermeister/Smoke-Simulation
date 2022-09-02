@@ -1,35 +1,40 @@
 // ODF Includes
-#include <ODF/Math/Matrix4x4.h>
+#include <ODF/Math/Matrix3x3.h>
 
 namespace ODF
 {
    namespace Math
    {
-      Matrix4x4::Matrix4x4( void ) : SquareMatrix< Size >( )
+      Matrix3x3::Matrix3x3( void ) : SquareMatrix< Size >( )
       {
 
       }
 
-      Matrix4x4::Matrix4x4( const Matrix4x4& Mat4x4 ) : SquareMatrix( Mat4x4 )
+      Matrix3x3::Matrix3x3( const Matrix3x3& Mat3x3 ) : SquareMatrix( Mat3x3 )
       {
 
       }
 
-      Matrix4x4& Matrix4x4::operator=( const SquareMatrix< 4 >& Mat )
+      Matrix3x3::Matrix3x3( const SquareMatrix< Size > SquareMat ) : SquareMatrix( SquareMat )
+      {
+         
+      }
+      
+      Matrix3x3& Matrix3x3::operator=( const SquareMatrix< 3 >& Mat )
       {
          ( ( Matrix< Size, Size >* )this )->operator=( *( const Matrix< Size, Size >* )&Mat );
          return( *this );
       }
 
-      Matrix4x4& Matrix4x4::operator*=( const Matrix4x4& Mat )
+      Matrix3x3& Matrix3x3::operator*=( const Matrix3x3& Mat )
       {
          ( ( Matrix< Size, Size >* )this )->operator*=( *( const Matrix< Size, Size >* )&Mat );
          return( *this );
       }
 
-      Matrix4x4 Matrix4x4::AxisRotation( const Vector< 3 >& Vec, double Theta )
+      Matrix3x3 Matrix3x3::AxisRotation( const Vector< 3 >& Vec, double Theta )
       {
-         Matrix4x4 result;
+         Matrix3x3 result;
          double x = Vec[ 0 ];
          double y = Vec[ 1 ];
          double z = Vec[ 2 ];
@@ -56,9 +61,9 @@ namespace ODF
          return( result );
       }
 
-      Matrix4x4 Matrix4x4::MakeTranslation( const Math::Vector< 3 >& Vec) 
+      Matrix3x3 Matrix3x3::MakeTranslation( const Math::Vector< 3 >& Vec) 
       {
-         Matrix4x4 transform;
+         Matrix3x3 transform;
          *dynamic_cast< SquareMatrix< Size >* >( &transform ) = SquareMatrix< Size >::Identity( );
          transform( 0, 3 ) = Vec[ 0 ];
          transform( 1, 3 ) = Vec[ 1 ];
@@ -67,9 +72,9 @@ namespace ODF
       }
 
 
-      Matrix4x4 Matrix4x4::MakeScale( const Math::Vector< 3 >&& Vec )
+      Matrix3x3 Matrix3x3::MakeScale( const Math::Vector< 3 >&& Vec )
       {
-         Matrix4x4 scale; 
+         Matrix3x3 scale; 
          scale( 0, 0 ) = Vec[ 0 ];
          scale( 1, 1 ) = Vec[ 1 ];
          scale( 2, 2 ) = Vec[ 2 ];
@@ -78,9 +83,9 @@ namespace ODF
       }
 
 
-      Matrix4x4 Matrix4x4::MakeXRotation( double Theta ) 
+      Matrix3x3 Matrix3x3::MakeXRotation( double Theta ) 
       {
-         Matrix4x4 rx;
+         Matrix3x3 rx;
          *dynamic_cast< SquareMatrix< Size >* >( &rx ) = SquareMatrix< Size >::Identity( );
          rx( 1, 1 ) =  ( double )cos( ( double )Theta );
          rx( 1, 2 ) = -( double )sin( ( double )Theta );
@@ -89,9 +94,9 @@ namespace ODF
          return( rx );
       }
 
-      Matrix4x4 Matrix4x4::MakeYRotation( double Theta )
+      Matrix3x3 Matrix3x3::MakeYRotation( double Theta )
       {
-         Matrix4x4 ry;
+         Matrix3x3 ry;
          *dynamic_cast< SquareMatrix< Size >* >( &ry ) = SquareMatrix< Size >::Identity( );
          ry( 0, 0 ) =  ( double )cos( ( double )Theta );
          ry( 0, 2 ) =  ( double )sin( ( double )Theta );
@@ -100,9 +105,9 @@ namespace ODF
          return( ry );
       }
 
-      Matrix4x4 Matrix4x4::MakeZRotation( double Theta )
+      Matrix3x3 Matrix3x3::MakeZRotation( double Theta )
       {
-         Matrix4x4 rz;
+         Matrix3x3 rz;
          *dynamic_cast< SquareMatrix< Size >* >( &rz ) = SquareMatrix< Size >::Identity( );
          rz( 0, 0 ) =  ( double )cos( ( double )Theta );
          rz( 0, 1 ) = -( double )sin( ( double )Theta );
@@ -112,9 +117,9 @@ namespace ODF
       }
 
 
-      Matrix4x4 Matrix4x4::MakeAxisRotation( const Math::Vector< 3 >& Vec, double Theta )
+      Matrix3x3 Matrix3x3::MakeAxisRotation( const Math::Vector< 3 >& Vec, double Theta )
       {
-         Matrix4x4 r;
+         Matrix3x3 r;
          *dynamic_cast< SquareMatrix< Size >* >( &r ) = SquareMatrix< Size >::Identity( );
 
          double x = Vec[ 0 ]; 

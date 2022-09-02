@@ -31,6 +31,43 @@ namespace ODF
       angle *= pow(1.003,dist);
       glInit(width,height);
       }
+
+            Ray PerspectiveCamera::generateRay(double x, double y) {
+      Math::Vector< 3 > screenCenter = camera_position + getDirection();
+      double screenHeight = 2 * tan(angle/2.0);
+      Math::Vector< 3 > xAxis = getHorizontal() * screenHeight;
+      Math::Vector< 3 > yAxis = getScreenUp() * screenHeight;
+      Math::Vector< 3 > lowerLeft = screenCenter - 0.5*xAxis - 0.5*yAxis;
+      Math::Vector< 3 > screenPoint = lowerLeft + x*xAxis + y*yAxis;
+      Math::Vector< 3 > dir = screenPoint - camera_position;
+      dir.Normalize();
+      return Ray(camera_position,dir); 
+      } 
+
+      std::ostream& operator<<(std::ostream &ostr, const PerspectiveCamera &c) {
+      ostr << "PerspectiveCamera {" << std::endl;
+      ostr << "  camera_position    " << c.camera_position;
+      ostr << "  point_of_interest  " << c.point_of_interest;
+      ostr << "  up                 " << c.up;
+      ostr << "  angle              " << c.angle << std::endl;
+      ostr << "}" << std::endl;
+      return ostr;
+      }
+
+            std::istream& operator>>(std::istream &istr, PerspectiveCamera &c) {
+      std::string token;
+      istr >> token; assert (token == "{");
+      istr >> token; assert (token == "camera_position");
+      istr >> c.camera_position;
+      istr >> token; assert (token == "point_of_interest");
+      istr >> c.point_of_interest;
+      istr >> token; assert (token == "up");
+      istr >> c.up; 
+      istr >> token; assert (token == "angle");
+      istr >> c.angle; 
+      istr >> token; assert (token == "}");
+      return istr;
+      }
    }
 }
 

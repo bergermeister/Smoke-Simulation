@@ -52,7 +52,7 @@ namespace ODF
              * @param[in] M
              * @return This method returns nothing. 
              */
-            Matrix( Matrix& M )
+            Matrix( const Matrix& M )
             {
                *this = M;
             }
@@ -75,7 +75,7 @@ namespace ODF
              * @param None
              * @return
              */
-            ~Matrix( void ) = default;
+            virtual ~Matrix( void ) = default;
 
             /**
              * @brief 

@@ -20,12 +20,13 @@ and render smoke in three dimensions.
     <tr><td> (optional) doxygen <td> 1.9.1 <td> sudo apt-add-repository universe <br> 
                                                 sudo apt-get update <br>
                                                 sudo apt-get install doxygen
+    <tr><td> (optional) lcov <td> <td> sudo apt install lcov
 </table>
 
 ## Building, Testing, and Code Coverage
     cmake --preset gcc-debug
-    cmake --build --preset gcc-debug
+    cmake --build --preset gcc-debug -j
     ctest --preset gcc-debug
-    lcov --capture --directory build/src --output-file doc/coverage.info 
+    lcov --capture --directory build/gcc --output-file doc/coverage.info 
     genhtml doc/coverage.info --output-directory doc/coverage
     gprof build/tst/GTestCrypto.exe build/tst/gmon.out > doc/profiling.txt

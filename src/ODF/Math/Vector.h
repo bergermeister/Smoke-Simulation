@@ -243,13 +243,13 @@ namespace ODF
 
             void Negate( void ) 
             { 
-               this->Scale *= -1.0;
+               *this *= -1.0;
             }
 
             double Dot( const Vector& V ) const
             {
                double dotProduct = 0;
-               for( auto index = 0; index < Dimension; index++ )
+               for( size_t index = 0; index < Dimension; index++ )
                {
                   dotProduct += this->direction[ index ] * V.direction[ index ];
                }
@@ -265,23 +265,38 @@ namespace ODF
                return( Vector( { x, y, z } ) );
             }
 
+            friend Vector operator-( const Vector& Vec )
+            {
+               Vector negated = Vec; 
+               negated.Negate( ); 
+               return( negated );
+            }
+
             friend std::ostream& operator<<( std::ostream& OutStream, const Vector& V )
             {
                size_t index;
+               OutStream << "[ ";
                for( index = 0; index < ( Vector::Dimension - 1 ); index++ )
                {
-                  OutStream << V.direction[ index ] << " ";
+                  OutStream << V.direction[ index ] << ", ";
                }
                OutStream << V.direction[ index ] << std::endl;
+               OutStream << " ]";
                return( OutStream );
             }
 
             friend std::istream& operator>>( std::istream& InStream, Vector& V )
             {
-               for( auto index = 0; index < Vector::Dimension; index++ )
+               size_t index;
+               std::string token;
+               InStream >> token; assert( token == "[" );
+               for( index = 0; index < ( Vector::Dimension - 1 ); index++ )
                {
-                  InStream >>  V.direction[ index ];
+                  InStream >> V.direction[ index ];
+                  InStream >> token; assert( token == "," );
                }
+               InStream >> V.direction[ index ];
+               InStream >> token; assert( token == "]" );
                return( InStream );
             }
       };

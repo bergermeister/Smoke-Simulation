@@ -2,7 +2,7 @@ target_sources( OpenGLFramework
    PRIVATE
       Camera.cpp
       Hit.cpp
-      #OrthographicCamera.cpp
+      OrthographicCamera.cpp
       #PerspectiveCamera.cpp
       #RayTracer.cpp
       Shade.cpp

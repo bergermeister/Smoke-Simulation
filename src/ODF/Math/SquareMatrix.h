@@ -22,6 +22,27 @@ namespace ODF
       {
          public:     // Public Methods
             /**
+             * @brief Construct a new Square Matrix object
+             * 
+             */
+            SquareMatrix( void ) : Matrix< Size, Size >( )
+            {
+
+            }
+
+            /**
+             * @brief Construct a new Square Matrix object
+             * 
+             * @param SquareMat 
+             */
+            SquareMatrix( const SquareMatrix& Mat ) : Matrix< Size, Size >( Mat )
+            {
+               
+            }
+
+            virtual ~SquareMatrix( void ) = default;
+
+            /**
              * @brief 
              * 
              * @param None
@@ -53,7 +74,7 @@ namespace ODF
                {
                   for( size_t col = 0; col < Size; col++ )
                   {
-                     result( row ) += Matrix< Size, Size >::operator( )( row, col ) * result( col );
+                     result[ row ] += Matrix< Size, Size >::operator( )( row, col ) * result[ col ];
                   }
                }
                return( result );

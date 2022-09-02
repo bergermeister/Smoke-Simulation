@@ -40,6 +40,9 @@ namespace ODF
             friend std::ostream& operator<<( std::ostream& OutStream, const OrthographicCamera& Cam );
             friend std::istream& operator>>( std::istream& InStream, OrthographicCamera& Cam );
             /// @}
+
+         protected:  // Protected Methods
+            virtual std::ostream& outputStream( std::ostream& OutStream ) const override;
       };
    }
 }

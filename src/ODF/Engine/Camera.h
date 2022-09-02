@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2022
  * 
  */
-#ifndef ODF_Primitive_Camera_h
-#define ODF_Primitive_Camera_h
+#ifndef ODF_Engine_Camera_h
+#define ODF_Engine_Camera_h
 
 // ODF Includes
 #include <ODF/Environment.h>
@@ -45,13 +45,7 @@ namespace ODF
             void Rotate( double Rx, double Ry );
             /// @}
 
-            friend std::ostream& operator<<( std::ostream& OutStream, const Camera& Camera );
-
-         protected:  // Protected Methods
-            Camera( void ) = delete;
-
-            // HELPER FUNCTIONS
-            Math::Vector< 3 > Horizontal( void ) const
+            inline Math::Vector< 3 > Horizontal( void ) const
             {
                Math::Vector< 3 > result = Math::Vector< 3 >::Cross( this->Direction( ), this->up );
                result.Normalize( );
@@ -63,12 +57,24 @@ namespace ODF
                return( Math::Vector< 3 >::Cross( this->Horizontal( ), this->Direction( ) ) );
             }
 
-            Math::Vector< 3 > Direction( void ) const 
+            inline Math::Vector< 3 > Direction( void ) const 
             {
                Math::Vector< 3 > result = this->poi - this->pos;
                result.Normalize( );
                return( result ); 
             }
+
+            inline friend std::ostream& operator<<( std::ostream& OutStream, const Camera& Cam )
+            {   
+               return( Cam.outputStream( OutStream ) );
+            }
+
+         protected:  // Protected Methods
+            virtual std::ostream& outputStream( std::ostream& OutStream ) const = 0;
+
+         private:    // Private Methods
+            Camera( void ) = delete;
+               
       };
    }
 }

@@ -1,15 +1,8 @@
 cmake_minimum_required( VERSION 3.15 )
-project( ODF VERSION 0.0.1 )
+project( SmokeSimulator VERSION 1.1 )
 
 set( CMAKE_CXX_STANDARD 14 )
 set( CMAKE_CXX_STANDARD_REQUIRED ON )
-
-#if( BUILD_TESTING )
-   # -pg    enable profiling
-   #add_compile_options( -fprofile-arcs -ftest-coverage --coverage -pg --no-pie -no-pie -fno-pie )
-   #add_link_options( -fprofile-arcs --coverage -pg --no-pie -no-pie -fno-pie )
-   #set( CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qc -fprofile-arcs --coverage <TARGET> <OBJECTS>" )
-#endif( )
 
 add_library( OpenGLFramework STATIC )
 target_include_directories( OpenGLFramework
@@ -35,6 +28,13 @@ target_include_directories( OpenGLApplication
       $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
+if( BUILD_TESTING )
+   # add_compile_options( -fprofile-arcs -ftest-coverage --coverage )
+   target_compile_options( OpenGLFramework PRIVATE -fprofile-arcs -ftest-coverage )
+   target_compile_options( OpenGLApplication PRIVATE -fprofile-arcs -ftest-coverage )
+   add_link_options( -fprofile-arcs --coverage )   
+endif( )
+
 add_subdirectory( src )
 
 target_link_libraries(
@@ -42,9 +42,11 @@ target_link_libraries(
    OpenGLFramework
 )
 
+# Google Test
 if( BUILD_TESTING )
    target_link_libraries(
       OpenGLApplication
+      OpenGLFramework
       gcov
    )
 

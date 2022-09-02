@@ -50,6 +50,46 @@ namespace ODF
          Math::Vector< 3 > screenPoint = lowerLeft + ( xAxis * X ) + ( yAxis * Y );
          return( Ray( screenPoint,Direction( ) ) );
       }
+
+      std::ostream& OrthographicCamera::outputStream( std::ostream& OutStream ) const
+      {
+         OutStream << *this;
+         return( OutStream );
+      }
+
+      std::ostream& operator<<( std::ostream& OutStream, const OrthographicCamera& Cam )
+      {
+         OutStream << "\"OrthographicCamera\": {";
+         OutStream << "\"position\": " << Cam.pos << ",";
+         OutStream << "\"pointOfInterest\": " << Cam.poi << ",";
+         OutStream << "\"up\": " << Cam.up << ",";
+         OutStream << "\"size\" : " << Cam.size << "}" << std::endl;
+         return( OutStream );
+      }
+
+      std::istream& operator>>( std::istream& InStream, OrthographicCamera& Cam )
+      {
+         std::string token;
+         InStream >> token; assert( token == "OrthoGraphicCamera" );
+         InStream >> token; assert( token == ":" );
+         InStream >> token; assert( token == "{" );
+         InStream >> token; assert( token == "position" );
+         InStream >> Cam.pos;
+         InStream >> token; assert( token == "," );
+         InStream >> token; assert( token == "pointOfInterest" );
+         InStream >> token; assert( token == ":" );
+         InStream >> Cam.poi;
+         InStream >> token; assert( token == "," );
+         InStream >> token; assert( token == "up" );
+         InStream >> token; assert( token == ":" );
+         InStream >> Cam.up; 
+         InStream >> token; assert( token == "," );
+         InStream >> token; assert( token == "size" );
+         InStream >> token; assert( token == ":" );
+         InStream >> Cam.size; 
+         InStream >> token; assert( token == "}" );
+         return( InStream );
+      }    
    }
 }
 

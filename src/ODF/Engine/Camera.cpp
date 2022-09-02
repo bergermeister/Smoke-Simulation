@@ -1,6 +1,6 @@
 // ODF Includes
 #include <ODF/Engine/Camera.h>
-#include <ODF/Math/Matrix4x4.h>
+#include <ODF/Math/Matrix3x3.h>
 
 namespace ODF
 {
@@ -75,9 +75,11 @@ namespace ODF
        */
       void Camera::Rotate( double Rx, double Ry )
       {
+         using Math::Matrix3x3;
+         using Math::SquareMatrix;
          // Don't let the model flip upside-down 
          // (There is a singularity at the poles when 'up' and 'direction' are aligned)
-         double tiltAngle = acos( up.Dot( this->Direction( ) ) );
+         double tiltAngle = acos( this->up.Dot( this->Direction( ) ) );
          if( ( tiltAngle - Ry ) > 3.13 )
          {
             Ry = tiltAngle - 3.13;
@@ -86,103 +88,12 @@ namespace ODF
          {
             Ry = tiltAngle - 0.01;
          }
-         Math::Matrix4x4 rotMat;
-         *dynamic_cast< Math::SquareMatrix< Math::Matrix4x4::Size >* >( &rotMat ) = Math::Matrix4x4::Identity( );
-         rotMat *= Math::Matrix4x4::MakeTranslation( this->poi );
-         rotMat *= Matrix::MakeAxisRotation(up, rx);
-         rotMat *= Matrix::MakeAxisRotation(getHorizontal(), ry);
-         rotMat *= Matrix::MakeTranslation(-point_of_interest);
-         rotMat.Transform(camera_position);
-      }
-
-      // ====================================================================
-      // ====================================================================
-      // GENERATE RAY
-
-      Ray OrthographicCamera::generateRay(double x, double y) {
-      Math::Vector< 3 > screenCenter = camera_position;
-      Math::Vector< 3 > xAxis = getHorizontal() * size; 
-      Math::Vector< 3 > yAxis = getScreenUp() * size; 
-      Math::Vector< 3 > lowerLeft = screenCenter - 0.5*xAxis - 0.5*yAxis;
-      Math::Vector< 3 > screenPoint = lowerLeft + x*xAxis + y*yAxis;
-      return Ray(screenPoint,getDirection());
-      }
-
-      Ray PerspectiveCamera::generateRay(double x, double y) {
-      Math::Vector< 3 > screenCenter = camera_position + getDirection();
-      double screenHeight = 2 * tan(angle/2.0);
-      Math::Vector< 3 > xAxis = getHorizontal() * screenHeight;
-      Math::Vector< 3 > yAxis = getScreenUp() * screenHeight;
-      Math::Vector< 3 > lowerLeft = screenCenter - 0.5*xAxis - 0.5*yAxis;
-      Math::Vector< 3 > screenPoint = lowerLeft + x*xAxis + y*yAxis;
-      Math::Vector< 3 > dir = screenPoint - camera_position;
-      dir.Normalize();
-      return Ray(camera_position,dir); 
-      } 
-      // ====================================================================
-      // ====================================================================
-
-      std::ostream& operator<<(std::ostream &ostr, const Camera &c) {
-      const Camera* cp = &c;
-      if (dynamic_cast<const OrthographicCamera*>(cp)) {
-         const OrthographicCamera* ocp = (const OrthographicCamera*)cp;
-         ostr << *ocp;
-      } else if (dynamic_cast<const PerspectiveCamera*>(cp)) {
-         const PerspectiveCamera* pcp = (const PerspectiveCamera*)cp;
-         ostr << *pcp;
-      }
-      return ostr;
-      }
-
-      std::ostream& operator<<(std::ostream &ostr, const OrthographicCamera &c) {
-      ostr << "OrthographicCamera {" << std::endl;
-      ostr << "    camera_position   " << c.camera_position;
-      ostr << "    point_of_interest " << c.point_of_interest;
-      ostr << "    up                " << c.up; 
-      ostr << "    size              " << c.size << std::endl;
-      ostr << "}" << std::endl;
-      return ostr;
-      }    
-
-      std::ostream& operator<<(std::ostream &ostr, const PerspectiveCamera &c) {
-      ostr << "PerspectiveCamera {" << std::endl;
-      ostr << "  camera_position    " << c.camera_position;
-      ostr << "  point_of_interest  " << c.point_of_interest;
-      ostr << "  up                 " << c.up;
-      ostr << "  angle              " << c.angle << std::endl;
-      ostr << "}" << std::endl;
-      return ostr;
-      }
-
-
-      std::istream& operator>>(std::istream &istr, OrthographicCamera &c) {
-      std::string token;
-      istr >> token; assert (token == "{");
-      istr >> token; assert (token == "camera_position");
-      istr >> c.camera_position;
-      istr >> token; assert (token == "point_of_interest");
-      istr >> c.point_of_interest;
-      istr >> token; assert (token == "up");
-      istr >> c.up; 
-      istr >> token; assert (token == "size");
-      istr >> c.size; 
-      istr >> token; assert (token == "}");
-      return istr;
-      }    
-
-      std::istream& operator>>(std::istream &istr, PerspectiveCamera &c) {
-      std::string token;
-      istr >> token; assert (token == "{");
-      istr >> token; assert (token == "camera_position");
-      istr >> c.camera_position;
-      istr >> token; assert (token == "point_of_interest");
-      istr >> c.point_of_interest;
-      istr >> token; assert (token == "up");
-      istr >> c.up; 
-      istr >> token; assert (token == "angle");
-      istr >> c.angle; 
-      istr >> token; assert (token == "}");
-      return istr;
+         Matrix3x3 rotationMatrix( Matrix3x3::Identity( ) );
+         rotationMatrix *= Matrix3x3::MakeTranslation( this->poi );
+         rotationMatrix *= Matrix3x3::MakeAxisRotation( this->up, Rx );
+         rotationMatrix *= Matrix3x3::MakeAxisRotation( this->Horizontal( ), Ry );
+         rotationMatrix *= Matrix3x3::MakeTranslation( -this->poi );
+         this->pos = rotationMatrix.Transform( );
       }
    }
 }
