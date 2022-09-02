@@ -17,6 +17,7 @@ and render smoke in three dimensions.
                                   sudo apt install build-essential
     <tr><td> g++ <td> 11.2.0 <td> sudo apt update <br>
                                   sudo apt install build-essential
+    <tr><td> freeglut3-dev <td> 2.8.1-6 <td> sudo apt install freeglut3-dev
     <tr><td> (optional) doxygen <td> 1.9.1 <td> sudo apt-add-repository universe <br> 
                                                 sudo apt-get update <br>
                                                 sudo apt-get install doxygen

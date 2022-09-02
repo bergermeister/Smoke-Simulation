@@ -66,11 +66,17 @@ namespace ODF
 
             inline friend std::ostream& operator<<( std::ostream& OutStream, const Camera& Cam )
             {   
-               return( Cam.outputStream( OutStream ) );
+               return( Cam.stream( OutStream ) );
+            }
+
+            inline friend std::istream& operator>>( std::istream& InStream, Camera& Cam )
+            {   
+               return( Cam.stream( InStream ) );
             }
 
          protected:  // Protected Methods
-            virtual std::ostream& outputStream( std::ostream& OutStream ) const = 0;
+            virtual std::ostream& stream( std::ostream& OutStream ) const = 0;
+            virtual std::istream& stream( std::istream& InStream ) = 0;
 
          private:    // Private Methods
             Camera( void ) = delete;

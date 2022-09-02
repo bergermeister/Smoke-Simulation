@@ -40,6 +40,9 @@ add_subdirectory( src )
 target_link_libraries(
    OpenGLApplication
    OpenGLFramework
+   glut
+   GL
+   GLU
 )
 
 # Google Test
@@ -47,6 +50,9 @@ if( BUILD_TESTING )
    target_link_libraries(
       OpenGLApplication
       OpenGLFramework
+      glut
+      GL
+      GLU
       gcov
    )
 
@@ -78,6 +84,10 @@ if( BUILD_TESTING )
       GTestOpenGLFramework
       GTest::gtest_main
       OpenGLFramework
+      glut
+      GL
+      GLU
+      #GLEW
       gcov
    )
 

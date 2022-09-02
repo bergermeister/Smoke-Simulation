@@ -36,5 +36,49 @@
 			"type_traits": "cpp",
 			"typeinfo": "cpp"
 		}
+	},
+	"launch": 
+	{
+		"configurations": 
+		[
+			{
+				"name": "(cppdbg) GTestOpenGLFramework",
+				"type": "cppdbg",
+				"request": "launch",
+				"cwd": "${workspaceFolder}",
+				"program": "${workspaceFolder}/build/gcc/GTestOpenGLFramework",
+				"args": [ "arg1", "arg2" ],
+				"stopAtEntry": true,
+				"launchCompleteCommand": "exec-run",
+				"logging": 
+				{
+					"moduleLoad": true,
+					"trace": true
+				},
+				"environment": 
+				[ 
+					{ "name": "config", "value": "Debug" } 
+				],
+				"setupCommands": 
+				[
+					 {
+						  "description": "Enable pretty-printing for gdb",
+						  "text": "-enable-pretty-printing",
+						  "ignoreFailures": true
+					 },
+					 {
+						  "description":  "Set Disassembly Flavor to Intel",
+						  "text": "-gdb-set disassembly-flavor intel",
+						  "ignoreFailures": true
+					 }
+				],
+				"linux": 
+				{
+					"MIMode": "gdb",
+					"miDebuggerPath": "/usr/bin/gdb"
+				},
+			}
+		],
+		"compounds": []
 	}
 }

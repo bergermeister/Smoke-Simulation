@@ -1,6 +1,9 @@
 // ODF Includes
 #include <ODF/Engine/OrthographicCamera.h>
 
+// StdLib Includes
+#include <sstream>
+
 namespace ODF
 {
    namespace Engine
@@ -51,31 +54,37 @@ namespace ODF
          return( Ray( screenPoint,Direction( ) ) );
       }
 
-      std::ostream& OrthographicCamera::outputStream( std::ostream& OutStream ) const
-      {
-         OutStream << *this;
-         return( OutStream );
-      }
-
       std::ostream& operator<<( std::ostream& OutStream, const OrthographicCamera& Cam )
       {
-         OutStream << "\"OrthographicCamera\": {";
-         OutStream << "\"position\": " << Cam.pos << ",";
-         OutStream << "\"pointOfInterest\": " << Cam.poi << ",";
-         OutStream << "\"up\": " << Cam.up << ",";
-         OutStream << "\"size\" : " << Cam.size << "}" << std::endl;
+         OutStream << "\"OrthographicCamera\":{";
+         OutStream << "\"position\":" << Cam.pos << ",";
+         OutStream << "\"pointOfInterest\":" << Cam.poi << ",";
+         OutStream << "\"up\":" << Cam.up << ",";
+         OutStream << "\"size\":" << Cam.size << "}" << std::endl;
          return( OutStream );
       }
 
       std::istream& operator>>( std::istream& InStream, OrthographicCamera& Cam )
       {
-         std::string token;
-         InStream >> token; assert( token == "OrthoGraphicCamera" );
-         InStream >> token; assert( token == ":" );
-         InStream >> token; assert( token == "{" );
-         InStream >> token; assert( token == "position" );
-         InStream >> Cam.pos;
-         InStream >> token; assert( token == "," );
+         size_t index = 0;
+         size_t position;
+         std::string str;
+         std::stringstream stream;
+
+         /// @par
+         /// -# Read the OrthographicCamera JSON object into the string object
+         InStream >> str;
+         position = str.find( '{', index );
+         assert( str.substr( index, position - index + 1 ) == "\"OrthoGraphicCamera\":{" );
+         index = position + 1;
+         position = str.find( ':', index );
+         assert( str.substr( index, position - index + 1 ) == "\"position\":" );
+         index = position + 1;
+         position = str.find( ',', index );
+         stream.str( str.substr( index, position - index + 1 ) );
+         stream >> Cam.pos;
+         /*
+         index = position;
          InStream >> token; assert( token == "pointOfInterest" );
          InStream >> token; assert( token == ":" );
          InStream >> Cam.poi;
@@ -88,6 +97,7 @@ namespace ODF
          InStream >> token; assert( token == ":" );
          InStream >> Cam.size; 
          InStream >> token; assert( token == "}" );
+         */
          return( InStream );
       }    
    }

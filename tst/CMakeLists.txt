@@ -1,2 +1,2 @@
-add_subdirectory( GTestODF )
+add_subdirectory( ODF )
 

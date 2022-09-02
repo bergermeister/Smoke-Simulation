@@ -106,7 +106,7 @@ namespace ODF
             bool operator==( const Vector& V ) const
             {
                bool equal = true;
-               for( auto index = 0; index < Dimension; index++ )
+               for( size_t index = 0; index < Dimension; index++ )
                {
                   if( this->direction[ index ] != V.direction[ index ] )
                   {
@@ -275,13 +275,12 @@ namespace ODF
             friend std::ostream& operator<<( std::ostream& OutStream, const Vector& V )
             {
                size_t index;
-               OutStream << "[ ";
+               OutStream << "[";
                for( index = 0; index < ( Vector::Dimension - 1 ); index++ )
                {
-                  OutStream << V.direction[ index ] << ", ";
+                  OutStream << V.direction[ index ] << ",";
                }
-               OutStream << V.direction[ index ] << std::endl;
-               OutStream << " ]";
+               OutStream << V.direction[ index ] << "]";
                return( OutStream );
             }
 

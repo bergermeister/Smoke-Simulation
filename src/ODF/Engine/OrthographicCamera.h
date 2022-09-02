@@ -42,7 +42,17 @@ namespace ODF
             /// @}
 
          protected:  // Protected Methods
-            virtual std::ostream& outputStream( std::ostream& OutStream ) const override;
+            virtual std::ostream& stream( std::ostream& OutStream ) const override
+            {
+               OutStream << *this;
+               return( OutStream );
+            }
+
+            virtual std::istream& stream( std::istream& InStream ) override
+            {
+               InStream >> *this;
+               return( InStream );
+            }
       };
    }
 }
