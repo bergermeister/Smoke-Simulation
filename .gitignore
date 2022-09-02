@@ -1,0 +1,6 @@
+# Ignore CMake output folder
+build    
+
+# Ignore intermediate build files 
+dev
+
