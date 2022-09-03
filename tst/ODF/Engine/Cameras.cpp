@@ -33,6 +33,7 @@ TEST( Engine, OrthgraphicCameraStreams )
    str = streamOut.str( );
    EXPECT_EQ( expectedInitial, str );
    streamIn >> *camera;
+   streamOut.str( std::string( ) );
    streamOut << *camera;
    str = streamOut.str( );
    EXPECT_EQ( expectedUpdate, str );

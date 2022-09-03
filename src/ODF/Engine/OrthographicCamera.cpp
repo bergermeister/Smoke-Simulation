@@ -8,6 +8,12 @@ namespace ODF
 {
    namespace Engine
    {
+         const std::string OrthographicCamera::objectNameStr = "\"OrthographicCamera\":{";
+         const std::string OrthographicCamera::positionStr = "\"position\":";
+         const std::string OrthographicCamera::pointOfInterestStr = "\"pointOfInterest\":";
+         const std::string OrthographicCamera::upStr = "\"up\":";
+         const std::string OrthographicCamera::sizeStr = "\"size\":";
+
       OrthographicCamera::OrthographicCamera( const Math::Vector< 3 >& Position,
                                               const Math::Vector< 3 >& POI,
                                               const Math::Vector< 3 >& Up,
@@ -56,48 +62,76 @@ namespace ODF
 
       std::ostream& operator<<( std::ostream& OutStream, const OrthographicCamera& Cam )
       {
-         OutStream << "\"OrthographicCamera\":{";
-         OutStream << "\"position\":" << Cam.pos << ",";
-         OutStream << "\"pointOfInterest\":" << Cam.poi << ",";
-         OutStream << "\"up\":" << Cam.up << ",";
-         OutStream << "\"size\":" << Cam.size << "}" << std::endl;
+         OutStream << OrthographicCamera::objectNameStr;
+         OutStream << OrthographicCamera::positionStr << Cam.pos << ",";
+         OutStream << OrthographicCamera::pointOfInterestStr << Cam.poi << ",";
+         OutStream << OrthographicCamera::upStr << Cam.up << ",";
+         OutStream << OrthographicCamera::sizeStr << Cam.size << "}" << std::endl;
          return( OutStream );
       }
 
+      /**
+       * @brief 
+       * 
+       * @param InStream 
+       * @param Cam 
+       * @return std::istream& 
+       */
       std::istream& operator>>( std::istream& InStream, OrthographicCamera& Cam )
       {
          size_t index = 0;
          size_t position;
+         uint32_t attributeIndex;
          std::string str;
+         std::string token;
          std::stringstream stream;
 
          /// @par
-         /// -# Read the OrthographicCamera JSON object into the string object
+         /// -# Verify the object's name is OrthographicCamera
          InStream >> str;
          position = str.find( '{', index );
-         assert( str.substr( index, position - index + 1 ) == "\"OrthoGraphicCamera\":{" );
-         index = position + 1;
-         position = str.find( ':', index );
-         assert( str.substr( index, position - index + 1 ) == "\"position\":" );
-         index = position + 1;
-         position = str.find( ',', index );
-         stream.str( str.substr( index, position - index + 1 ) );
-         stream >> Cam.pos;
-         /*
-         index = position;
-         InStream >> token; assert( token == "pointOfInterest" );
-         InStream >> token; assert( token == ":" );
-         InStream >> Cam.poi;
-         InStream >> token; assert( token == "," );
-         InStream >> token; assert( token == "up" );
-         InStream >> token; assert( token == ":" );
-         InStream >> Cam.up; 
-         InStream >> token; assert( token == "," );
-         InStream >> token; assert( token == "size" );
-         InStream >> token; assert( token == ":" );
-         InStream >> Cam.size; 
-         InStream >> token; assert( token == "}" );
-         */
+         token = str.substr( index, position - index + 1 );
+         assert( token.compare( OrthographicCamera::objectNameStr ) == 0 );
+
+         /// -# For each attribute
+         ///   -# Obtain the attribute's name string
+         ///   -# Parse the attribute corresponding to the name
+         for( attributeIndex = 0; attributeIndex < OrthographicCamera::attributeCount; attributeIndex++ )
+         {
+            index = position + 1;
+            position = str.find( ':', index );
+            token = str.substr( index, position - index + 1 );
+            index = position + 1;
+            if( attributeIndex < ( OrthographicCamera::attributeCount - 1 ) )
+            {
+               position = str.find( ']', index );
+            }
+            else
+            {
+               position = str.find( '}', index );
+            }
+            stream.clear( );
+            stream.str( str.substr( index, position - index + 2 ) );
+
+            if( token.compare( OrthographicCamera::positionStr ) == 0 )
+            {
+               stream >> Cam.pos;
+            }
+            else if( token.compare( OrthographicCamera::pointOfInterestStr ) == 0 )
+            {
+               stream >> Cam.poi;
+            }
+            else if( token.compare( OrthographicCamera::upStr ) == 0 )
+            {
+               stream >> Cam.up;
+            }
+            else if( token.compare( OrthographicCamera::sizeStr ) == 0 )
+            {
+               stream >> Cam.size;
+            }
+            position++; // Move past ] to ,
+         }
+         
          return( InStream );
       }    
    }

@@ -286,16 +286,29 @@ namespace ODF
 
             friend std::istream& operator>>( std::istream& InStream, Vector& V )
             {
-               size_t index;
+               size_t index = 0;
+               size_t position;
+               size_t directionIndex;
+               std::string str;
                std::string token;
-               InStream >> token; assert( token == "[" );
-               for( index = 0; index < ( Vector::Dimension - 1 ); index++ )
+               
+               InStream >> str;
+               position = str.find( '[', index );
+               index = position + 1;
+               for( directionIndex = 0; directionIndex < Vector::Dimension; directionIndex++ )
                {
-                  InStream >> V.direction[ index ];
-                  InStream >> token; assert( token == "," );
+                  if( directionIndex < ( Vector::Dimension - 1 ) )
+                  {
+                     position = str.find( ',', index );
+                  }
+                  else
+                  {
+                     position = str.find( ']', index );
+                  }
+                  V.direction[ directionIndex ] = atof( str.substr( index, position - index ).c_str( ) );
+                  index = position + 1;
                }
-               InStream >> V.direction[ index ];
-               InStream >> token; assert( token == "]" );
+
                return( InStream );
             }
       };

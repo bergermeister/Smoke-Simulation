@@ -22,6 +22,7 @@ and render smoke in three dimensions.
                                                 sudo apt-get update <br>
                                                 sudo apt-get install doxygen
     <tr><td> (optional) lcov <td> <td> sudo apt install lcov
+    <tr><Td> (optional) Visual Studio Code <td> <td>
 </table>
 
 ## Building, Testing, and Code Coverage
@@ -30,4 +31,4 @@ and render smoke in three dimensions.
     ctest --preset gcc-debug
     lcov --capture --directory build/gcc --output-file doc/coverage.info 
     genhtml doc/coverage.info --output-directory doc/coverage
-    gprof build/tst/GTestCrypto.exe build/tst/gmon.out > doc/profiling.txt
+    gprof build/gcc/OpenGLApplication build/gcc/gmon.out > doc/profiling.txt

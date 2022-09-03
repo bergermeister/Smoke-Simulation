@@ -23,6 +23,13 @@ namespace ODF
       class OrthographicCamera : public Camera
       {
          private:
+            static constexpr uint32_t attributeCount = 4;
+            static const std::string objectNameStr;
+            static const std::string positionStr;
+            static const std::string pointOfInterestStr;
+            static const std::string upStr;
+            static const std::string sizeStr;
+
             double size;
 
          public:

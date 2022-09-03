@@ -4,3 +4,5 @@ build
 # Ignore intermediate build files 
 dev
 
+# Ignore specific coverage info
+doc/coverage/usr
